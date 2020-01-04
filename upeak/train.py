@@ -12,9 +12,8 @@ def _parse_args():
     parser.add_argument('-o', '--output', help='path to save model weights', default='.')
     parser.add_argument('-e', '--epochs', default=50, type=int)
     parser.add_argument('-b', '--batch', default=32, type=int)
-    parser.add_argument('-s', '--steps', default=100, type=int)
-    parser.add_argument('-c', '--classes', default=3, type=int) #this should be inferred from input shape
-    parser.add_argument('-k', '--kernel', help='kernel size. can be list.', default=8)
+    parser.add_argument('-s', '--steps', default=500, type=int)
+    parser.add_argument('-k', '--kernel', help='kernel size. can be list.', default=4)
     parser.add_argument('-r', '--stride', help='stride length', default=1, type=int)
     parser.add_argument('-f', '--filters', help='number of filters. can be list.', default=8)
     parser.add_argument('-m', '--model', help='path to custom model structure. other parameters overridden.')
@@ -29,7 +28,7 @@ def _main():
     # load data
     traces, labels = load_data(args.traces, args.labels)
     training_set_generator = DataGenerator(traces, labels, batch_size=args.batch, steps=args.steps, augment=args.augment)
-    input_dims = (training_set_generator[0][0].shape[1], training_set_generator[0][0].shape[2]) # output is (batchsize, trace length, amplitude)
+    input_dims = (training_set_generator[0][0].shape[1], training_set_generator[0][0].shape[2], labels.shape[2]) # (trace length, input dimension (1), output dimension (classes))
 
     if args.model is not None:
         # skip model generation and use previously made model structure
@@ -47,7 +46,7 @@ def _main():
         kernel = int(args.kernel)
 
     # generate model structure
-    model = model_generator(classes=args.classes, filters=filters, kernel_size=kernel,
+    model = model_generator(input_dims=input_dims, filters=filters, kernel_size=kernel,
         strides=args.stride)
 
     # temporary for trouble shooting
@@ -57,13 +56,13 @@ def _main():
 
     # if no weights are provided, training is done with equal weights
     if args.weights is None:
-        args.weights = [1.0 for i in range(0, args.classes)]
+        args.weights = [1.0 for i in range(0, labels.shape[2])]
 
     # model compilation
     # shoudl add options for different loss functions and different metrics
     model.compile(optimizer=args.optimizer, metrics=['accuracy'], loss=weighted_categorical_crossentropy(args.weights))
 
-    model.fit(traces, labels, epochs=args.epochs, batch_size=args.batch)
+    model.fit_generator(generator=training_set_generator, epochs=args.epochs)
 
 if __name__ == "__main__":
     _main()

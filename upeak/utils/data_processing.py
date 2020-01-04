@@ -7,6 +7,7 @@ def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
 
 def nan_helper_2d(arr):
+    #probably can be done faster
     temp = np.empty(arr.shape)
     temp[:] = np.nan
     for n, y in enumerate(arr):
@@ -40,21 +41,21 @@ def label_adjuster(labels):
 
     return lab_strat
 
-def stack_sequences(seq_list):
+def stack_sequences(seq_list, cv=np.nan):
     '''
     Input list of 2d arrays. pads ends of traces with nan to same length and stacks traces
     Still needs to be tested for several different sizes of arrays.
     '''
     l_max = np.max([a.shape[1]for a in seq_list])
-    seq_list = [np.pad(a, ((0, 0), (0, l_max - a.shape[1])), constant_values=np.nan) for a in seq_list]
+    seq_list = [np.pad(a, ((0, 0), (0, l_max - a.shape[1])), constant_values=cv) for a in seq_list]
     return np.vstack(seq_list)
 
 def load_data(traces, labels):
     '''
     Loading will probably fail if traces are of different lengths
     '''
-    traces = stack_sequences([nan_helper_2d(np.load(t)) for t in traces])
-    labels = stack_sequences([np.load(l) for l in labels])
+    traces = stack_sequences([nan_helper_2d(np.load(t)) for t in traces], cv=np.nan)
+    labels = stack_sequences([np.load(l) for l in labels], cv=0)
 
     traces = np.expand_dims(traces, axis=-1)
 
@@ -82,7 +83,7 @@ def pick_positions(traces, labels, num, length=64):
     return list(zip(rand_row, rand_col))
 
 class DataGenerator(Sequence):
-    def __init__(self, traces, labels, length=64, batch_size=64, steps=500, shuffle=True, augment=False):
+    def __init__(self, traces, labels, length=64, batch_size=32, steps=1000, shuffle=True, augment=False):
         self.traces = traces
         self.labels = labels
         self.length = length
