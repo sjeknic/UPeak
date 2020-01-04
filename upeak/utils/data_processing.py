@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
-from keras.utils import to_categorical
+from keras.utils import to_categorical, Sequence
+from utils.augmenter import gen_augment_arr
 
 def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
@@ -80,8 +81,8 @@ def pick_positions(traces, labels, num, length=64):
             
     return list(zip(rand_row, rand_col))
 
-class DataGen(Sequence):
-    def __init__(self, traces, labels, length=64, batch_size=64, steps=500, shuffle=True):
+class DataGenerator(Sequence):
+    def __init__(self, traces, labels, length=64, batch_size=64, steps=500, shuffle=True, augment=False):
         self.traces = traces
         self.labels = labels
         self.length = length
@@ -90,6 +91,7 @@ class DataGen(Sequence):
         self.list_idxs = pick_positions(traces, labels, self.batch_size*self.steps)
         self.idxs = np.arange(len(self.list_idxs))
         self.shuffle = shuffle
+        self.augment = augment
     
     def __len__(self):
         'num batches per epoch'
@@ -104,6 +106,12 @@ class DataGen(Sequence):
         data_idxs = [self.list_idxs[i] for i in indexs]
         
         x, y = self.__data_generation(data_idxs)
+
+        if self.augment == True:
+            #sloppy
+            aug_arr = gen_augment_arr((x.shape[0], x.shape[1]))
+            x = x[:,:,0] * aug_arr
+            x = np.expand_dims(x, axis=-1)
         
         return x, y
     

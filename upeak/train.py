@@ -1,9 +1,8 @@
 from utils.model_generator import model_generator
 from utils.loss import weighted_categorical_crossentropy
-import utils.augmenter as aug
 import argparse
 import numpy as np
-from utils.data_processing import load_data, pick_positions
+from utils.data_processing import load_data, DataGenerator
 
 def _parse_args():
 
@@ -13,15 +12,15 @@ def _parse_args():
     parser.add_argument('-o', '--output', help='path to save model weights', default='.')
     parser.add_argument('-e', '--epochs', default=50, type=int)
     parser.add_argument('-b', '--batch', default=32, type=int)
-    parser.add_argument('-r', '--stepsepoch', default=100, type=int)
+    parser.add_argument('-s', '--steps', default=100, type=int)
     parser.add_argument('-c', '--classes', default=3, type=int) #this should be inferred from input shape
     parser.add_argument('-k', '--kernel', help='kernel size. can be list.', default=8)
-    parser.add_argument('-s', '--stride', help='stride length', default=1, type=int)
+    parser.add_argument('-r', '--stride', help='stride length', default=1, type=int)
     parser.add_argument('-f', '--filters', help='number of filters. can be list.', default=8)
     parser.add_argument('-m', '--model', help='path to custom model structure. other parameters overridden.')
     parser.add_argument('-p', '--optimizer', help='optimizer for model compilation', default='rmsprop')
     parser.add_argument('-w', '--weights', help='weights for loss function', default=None)
-    parser.add_argument('-a', '--augment', help='add this to include augmented data too', default=1)
+    parser.add_argument('-a', '--augment', help='add this to include augmented data too', action='store_true')
     return parser.parse_args()
 
 def _main():
@@ -29,13 +28,8 @@ def _main():
 
     # load data
     traces, labels = load_data(args.traces, args.labels)
-
-    print(traces.shape)
-    print(labels.shape)
-
-    # augment data, currently returns original data stacked on an array of amp+noise
-    if not args.augment: #runs if augment is None or False
-        traces = aug.augment(traces)
+    training_set_generator = DataGenerator(traces, labels, batch_size=args.batch, steps=args.steps, augment=args.augment)
+    input_dims = (training_set_generator[0][0].shape[1], training_set_generator[0][0].shape[2]) # output is (batchsize, trace length, amplitude)
 
     if args.model is not None:
         # skip model generation and use previously made model structure
@@ -68,8 +62,6 @@ def _main():
     # model compilation
     # shoudl add options for different loss functions and different metrics
     model.compile(optimizer=args.optimizer, metrics=['accuracy'], loss=weighted_categorical_crossentropy(args.weights))
-
-
 
     model.fit(traces, labels, epochs=args.epochs, batch_size=args.batch)
 
