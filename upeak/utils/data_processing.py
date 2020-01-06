@@ -97,6 +97,22 @@ def pick_positions(traces, labels, num, length=64):
             
     return list(zip(rand_row, rand_col))
 
+def gen_train_test(traces, labels, frac=0.1):
+    num_test_rows = int(np.floor(frac * traces.shape[0]))
+    test_rows = np.random.choice(traces.shape[0], num_test_rows, replace=False)
+
+    bool_rows = np.empty(traces.shape[0]).astype(bool)
+    bool_rows[:] = False
+    bool_rows[test_rows] = True
+
+    test_traces = traces[bool_rows, :, :].copy()
+    train_traces = traces[~bool_rows, :, :].copy()
+
+    test_labels = labels[bool_rows, :, :].copy()
+    train_labels = labels[~bool_rows, :, :].copy()
+
+    return train_traces, train_labels, test_traces, test_labels
+
 class DataGenerator(Sequence):
     def __init__(self, traces, labels, length=64, batch_size=32, steps=1000, shuffle=True, augment=False):
         self.traces = traces
