@@ -1,7 +1,7 @@
 import keras
 from keras.layers import Conv1D, MaxPooling1D, UpSampling1D, BatchNormalization, Input, Activation
 
-def model_generator(input_dims=(64, 1, 3), steps=3, conv_layers=2, transfer=False, filters=8, kernel_size=8, strides=1, activation='relu', padding='same'):
+def model_generator(input_dims=(64, 1, 3), steps=3, conv_layers=2, transfer=False, filters=16, kernel_size=8, strides=1, activation='relu', padding='same'):
     '''
     input_dims should be tuple
     steps is number of pooling and upsampling steps

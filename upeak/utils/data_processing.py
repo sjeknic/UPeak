@@ -162,7 +162,7 @@ def _main():
         np.save(args.output, arr)
 
     if not args.labels: #runs label cleaning if args.labels is false
-        arr = label_adjuster(arr)
+        arr = label_adjuster_2d(arr)
         np.save(args.output, arr)
 
 if __name__ == '__main__':
