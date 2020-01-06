@@ -10,16 +10,22 @@ def model_generator(input_dims=(64, 1, 3), steps=3, conv_layers=2, transfer=Fals
     '''
 
     x = Input(shape=(input_dims[0], input_dims[1]))
-    y = pooling_module(x, [steps, conv_layers], filters=filters, kernel_size=kernel_size, strides=strides, activation=activation, padding=padding)
- 
-    base = conv_layer_module(y[-1], conv_layers, filters=filters * (2**steps))
+    y, transfer_layers = pooling_module(x, [steps, conv_layers], filters=filters, kernel_size=kernel_size, strides=strides, activation=activation, padding=padding)
+
+    if type(kernel_size) is list:
+        kk = kernel_size[-1]
+    else:
+        kk = kernel_size
+
+    base = conv_layer_module(y[-1], conv_layers, filters=filters * (2**steps), kernel_size=kk)
 
     if transfer:
-        for n in y:
-            pass
+        transfer_layers = transfer_layers[::-1]
     else:
-        filters = base.shape[-1]
-        z = upsampling_module(base, [steps, conv_layers], filters=filters, kernel_size=kernel_size, strides=strides, activation=activation, padding=padding)
+        transfer_layers = None
+            
+    filters = base.shape[-1]
+    z = upsampling_module(base, [steps, conv_layers], transfer_layers=transfer_layers, filters=filters, kernel_size=kernel_size, strides=strides, activation=activation, padding=padding)
 
     output = Conv1D(input_dims[2], input_dims[1])(z[-1])
     output = Activation('softmax')(output)
@@ -28,14 +34,14 @@ def model_generator(input_dims=(64, 1, 3), steps=3, conv_layers=2, transfer=Fals
     
 def conv_layer_module(layer, steps, filters=8, kernel_size=8, strides=1, activation='relu', padding='same'):
     '''
-    does conv1d followed by batchnormalization. 
+    does conv1d followed by batch normalization. 
     if kernel_size is list, it specifies kernel_Size for each step
     '''
 
     for s in range(0, steps):
 
-        if kernel_size is list:
-            kk = kernel_size[-s]
+        if type(kernel_size) is list:
+            kk = kernel_size[s]
         else:
             kk = kernel_size
 
@@ -50,35 +56,43 @@ def pooling_module(layer, steps, filters=8, kernel_size=8, strides=1, activation
     if kernel size is list, it specifies new kernel size for each layer. Can be nested list.
     '''        
     stack = []
+    transfer_stack = []
     for s in range(0, steps[0]):
 
-        if kernel_size is list:
-            kk = kernel_size[-s]
+        if type(kernel_size) is list:
+            kk = kernel_size[s]
         else:
             kk = kernel_size
-
+  
         layer = conv_layer_module(layer, steps=steps[1], filters=filters, kernel_size=kk, strides=strides, activation=activation, padding=padding)
+        transfer_stack.append(layer)
         layer = MaxPooling1D()(layer)
         stack.append(layer)
 
         filters *= 2
 
-    return stack
+    return stack, transfer_stack
 
-def upsampling_module(layer, steps, filters=8, kernel_size=8, strides=1, activation='relu', padding='same'):
+def upsampling_module(layer, steps, transfer_layers=None, filters=8, kernel_size=8, strides=1, activation='relu', padding='same'):
     '''
     steps should be list. steps[0] = upsampling layers, steps[1] = convolutional steps
     '''
-       
+    if type(kernel_size) is list:
+        kernel_size = kernel_size[::-1]
+
     stack = []
     for s in range(0, steps[0]):
 
-        if kernel_size is list:
-            kk = kernel_size[-s]
+        if type(kernel_size) is list:
+            kk = kernel_size[s]
         else:
             kk = kernel_size
 
         layer = UpSampling1D()(layer)
+   
+        if transfer_layers is not None:
+            layer = keras.layers.merge.concatenate([layer, transfer_layers[s]])
+
         layer = conv_layer_module(layer, steps=steps[1], filters=int(filters), kernel_size=kk, strides=strides, activation=activation, padding=padding)
         stack.append(layer)
 

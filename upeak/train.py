@@ -33,21 +33,24 @@ def _main():
 
     if args.model is not None:
         # skip model generation and use previously made model structure
-        pass
-
-    # ensure filter and kernel are correct type
-    if type(args.filters) == list:
-        filters = [int(f) for f in args.filters]
+        # otherwise, just use default model
+        model = keras.models.model_from_json(args.model)
+        
     else:
-        filters = int(args.filters)
 
-    if type(args.kernel) == list:
-        kernel = [int(k) for k in args.kernel]
-    else:
-        kernel = int(args.kernel)
+        # ensure filter and kernel are correct type
+        if type(args.filters) == list:
+            filters = [int(f) for f in args.filters]
+        else:
+            filters = int(args.filters)
 
-    # generate model structure
-    model = model_generator(input_dims=input_dims, filters=filters, kernel_size=kernel, strides=args.stride)
+        if type(args.kernel) == list:
+            kernel = [int(k) for k in args.kernel]
+        else:
+            kernel = int(args.kernel)
+
+        # generate model structure
+        model = model_generator(input_dims=input_dims, filters=filters, kernel_size=kernel, strides=args.stride)
 
     # if no weights are provided, training is done with equal weights
     if args.weights is None:
@@ -57,7 +60,7 @@ def _main():
     # shoudl add options for different loss functions and different metrics
     model.compile(optimizer=args.optimizer, metrics=['accuracy'], loss=weighted_categorical_crossentropy(args.weights))
 
-    #model.fit_generator(generator=training_set_generator, epochs=args.epochs)
+    model.fit_generator(generator=training_set_generator, epochs=args.epochs)
 
     save_model(model, path=args.output)
 
