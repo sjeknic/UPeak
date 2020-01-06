@@ -16,23 +16,12 @@ def nan_helper_2d(arr):
         temp[n, :] = y 
     return temp
 
-def label_adjuster(labels):
-    # messy, should be done on whole array at once, not one row at a time
-    # also, should be done in place
+def label_adjuster_2d(labels):
+    # shouldn't be used
 
     lab_strat = None
     for l in labels:
-        ones = np.where(l==1)[0]
-        twos = np.where(l==2)[0]
-
-        for n, o in enumerate(ones):
-            o = int(o)
-            try:
-                if twos[n] > o:
-                    l[o+1:twos[n]] = 2
-                    l[twos[n]] = 1
-            except:
-                l[o+1] = 2
+        l = label_adjuster(l)
 
         if lab_strat is None:
             lab_strat = l
@@ -40,6 +29,33 @@ def label_adjuster(labels):
             lab_strat = np.vstack([lab_strat, l])
 
     return lab_strat
+
+def label_adjuster(l):
+    # messy, should be done on whole array at once, not one row at a time
+    # also, should be done in place
+
+    if not np.count_nonzero(l) == 0:
+        ones = np.where(l==1)[0]
+        twos = np.where(l==2)[0]
+
+        if len(ones) > len(twos):
+            l[ones[-1]+1:] = 2
+            l[ones[-1]] = 1
+            ones = ones[:-1]
+        elif len(ones) < len(twos):
+            l[:twos[0]] = 2
+            l[twos[0]] = 1
+            twos=twos[1:]
+
+        for o, t in zip(ones, twos):
+            if o < t:
+                l[o+1:t] = 2
+                l[t] = 1
+            elif t < o: # this should be case of end of peak at start of trace, start of peak at end of trace
+                l[:t] = 2
+                l[t] = 1
+                l[o+1:] = 2
+    return l
 
 def stack_sequences(seq_list, cv=np.nan):
     '''
@@ -59,7 +75,6 @@ def load_data(traces, labels):
 
     traces = np.expand_dims(traces, axis=-1)
 
-    labels = label_adjuster(labels) # this should probably be done before loading in this function
     labels = to_categorical(labels)
 
     return traces, labels
