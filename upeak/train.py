@@ -1,9 +1,11 @@
-from utils.model_generator import model_generator
-from utils.loss import weighted_categorical_crossentropy
+import json
 import argparse
 import numpy as np
 from utils.data_processing import load_data, DataGenerator, gen_train_test
 from utils.utils import save_model
+from keras.models import model_from_json
+from utils.model_generator import model_generator
+from utils.loss import weighted_categorical_crossentropy
 
 def _parse_args():
 
@@ -15,9 +17,9 @@ def _parse_args():
     parser.add_argument('-e', '--epochs', default=50, type=int)
     parser.add_argument('-b', '--batch', default=32, type=int)
     parser.add_argument('-s', '--steps', default=500, type=int)
+    parser.add_argument('-w', '--weights', help='weights for loss function', default=None, nargs='*', type=float) 
     parser.add_argument('-f', '--frac', help='fraction to use as test set', default=0.1, type=float)
     parser.add_argument('-p', '--optimizer', help='optimizer for model compilation', default='rmsprop')
-    parser.add_argument('-w', '--weights', help='weights for loss function', default=None) 
     parser.add_argument('-a', '--augment', help='add this to include augmented data too', action='store_true')
     return parser.parse_args()
 
@@ -35,8 +37,8 @@ def _main():
 
     if args.model is not None:
         # skip model generation and use previously made model structure
-        # otherwise, just use default model
-        model = keras.models.model_from_json(args.model)
+        with open(args.model, 'r') as json_file:
+            model = model_from_json(json_file.read())
     else:
         # generate default model structure
         model = model_generator(input_dims=input_dims)

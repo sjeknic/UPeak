@@ -1,5 +1,7 @@
 import argparse
 from utils.model_generator import model_generator
+from os.path import join
+from pathlib import Path
 
 def _parse_args():
 
@@ -20,7 +22,6 @@ def _main():
     args = _parse_args()
 
     input_dims = (args.dims[0], args.dims[1], args.classes)
-    print(args.kernel)
 
     model = model_generator(input_dims=input_dims, steps=args.steps, conv_layers=args.layers,
         filters=args.filters, kernel_size=args.kernel, strides=args.stride, transfer=args.transfer)
@@ -28,7 +29,7 @@ def _main():
     Path(args.output).mkdir(parents=False, exist_ok=True)
     model_json = model.to_json()
 
-    with open(join(path, 'model_structure.json'), 'w') as json_file:
+    with open(join(args.output, 'model_structure.json'), 'w') as json_file:
         json_file.write(model_json)
 
 if __name__ == "__main__":

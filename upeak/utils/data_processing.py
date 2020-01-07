@@ -66,16 +66,17 @@ def stack_sequences(seq_list, cv=np.nan):
     seq_list = [np.pad(a, ((0, 0), (0, l_max - a.shape[1])), constant_values=cv) for a in seq_list]
     return np.vstack(seq_list)
 
-def load_data(traces, labels):
+def load_data(traces, labels=None):
     '''
-    Loading will probably fail if traces are of different lengths
+    Loads data. Makes traces correct dimension (3D) and converts labels to categorical
+    traces of different lengths are padded.
     '''
     traces = stack_sequences([nan_helper_2d(np.load(t)) for t in traces], cv=np.nan)
-    labels = stack_sequences([np.load(l) for l in labels], cv=0)
-
     traces = np.expand_dims(traces, axis=-1)
 
-    labels = to_categorical(labels)
+    if labels is not None:
+        labels = stack_sequences([np.load(l) for l in labels], cv=0)
+        labels = to_categorical(labels)
 
     return traces, labels
 
