@@ -2,6 +2,7 @@ import argparse
 from utils.model_generator import model_generator
 from os.path import join
 from pathlib import Path
+import json
 
 def _parse_args():
 
@@ -16,21 +17,31 @@ def _parse_args():
     parser.add_argument('-r', '--stride', help='stride for each kernel', default=1, type=int)
     parser.add_argument('-t', '--transfer', help='horz info transfer?', action='store_true')
     parser.add_argument('-p', '--padding', help='padding method to use', default='same', type=str)
+    parser.add_argument('-a', '--activation', help='activation to use', default='relu', type=str)
     return parser.parse_args()
 
 def _main():
     args = _parse_args()
+    option_dict = vars(args)
 
     input_dims = (args.dims[0], args.dims[1], args.classes)
 
+    if len(args.kernel) == 1:
+        args.kernel = int(args.kernel[0])
+    
     model = model_generator(input_dims=input_dims, steps=args.steps, conv_layers=args.layers,
-        filters=args.filters, kernel_size=args.kernel, strides=args.stride, transfer=args.transfer)
+        filters=args.filters, kernel_size=args.kernel, strides=args.stride, transfer=args.transfer,
+        padding=args.padding, activation=args.activation)
 
     Path(args.output).mkdir(parents=False, exist_ok=True)
     model_json = model.to_json()
 
     with open(join(args.output, 'model_structure.json'), 'w') as json_file:
         json_file.write(model_json)
+
+    #save options dict so that model can be recreated
+    with open(join(args.output, 'model_dict.json'), 'w') as json_file:
+        json.dump(option_dict, json_file)
 
 if __name__ == "__main__":
     _main()
