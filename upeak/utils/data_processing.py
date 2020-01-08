@@ -45,7 +45,7 @@ def label_adjuster(l):
         elif len(ones) < len(twos):
             l[:twos[0]] = 2
             l[twos[0]] = 1
-            twos=twos[1:]
+            twos = twos[1:]
 
         for o, t in zip(ones, twos):
             if o < t:
@@ -121,7 +121,7 @@ class DataGenerator(Sequence):
         self.length = length
         self.batch_size = batch_size
         self.steps = steps
-        self.list_idxs = pick_positions(traces, labels, self.batch_size*self.steps)
+        self.list_idxs = pick_positions(traces, labels, self.batch_size*self.steps) # I think this could be done every epoch to improve training
         self.idxs = np.arange(len(self.list_idxs))
         self.shuffle = shuffle
         self.augment = augment
@@ -143,13 +143,14 @@ class DataGenerator(Sequence):
         if self.augment == True:
             #sloppy
             aug_arr = gen_augment_arr((x.shape[0], x.shape[1]))
-            x = x[:,:,0] * aug_arr
+            x = x[:, :, 0] * aug_arr
             x = np.expand_dims(x, axis=-1)
         
         return x, y
     
     def on_epoch_end(self):
         'randomize order after each epoch'
+        self.list_idxs = pick_positions(self.traces, self.labels, self.batch_size*self.steps)
         self.idxs = np.arange(len(self.list_idxs))
         if self.shuffle == True:
             np.random.shuffle(self.idxs)
@@ -163,24 +164,32 @@ class DataGenerator(Sequence):
 def _parse_args():
 
     parser = argparse.ArgumentParser(description='data processor')
-    parser.add_argument('-n', '--nans', help='add if nans need to be removed', default=1)
-    parser.add_argument('-l', '--labels', help='add if label categories need to be set', default=1)
+    parser.add_argument('-n', '--nans', help='add if nans need to be removed', action='store_true')
+    parser.add_argument('-l', '--labels', help='add if label categories need to be set', action='store_true')
+    parser.add_argument('-s', '--stack', help='stack input traces. will pad with nan', action='store_true')
     parser.add_argument('-o', '--output', help='where to save the output array', default='.')
-    parser.add_argument('-i', '--input', help='path to input array')
+    parser.add_argument('-i', '--input', help='path to input array', nargs='*')
     return parser.parse_args()
 
 def _main():
 
     args = _parse_args()
-    arr = np.load(args.input)
+    arr_stack = [np.load(a) for a in args.input]
 
-    if not args.nans: #runs nan cleaning if args.nans is false
-        arr = nan_helper_2d(arr)
-        np.save(args.output, arr)
+    if args.nans:
+        for n, arr in enumerate(arr_stack): 
+            arr = nan_helper_2d(arr)
+            arr_stack[n] = arr
+            #np.save(args.output, arr)
 
-    if not args.labels: #runs label cleaning if args.labels is false
-        arr = label_adjuster_2d(arr)
-        np.save(args.output, arr)
+    if args.labels: 
+        for n, arr in enumerate(arr_stack):
+            arr = label_adjuster_2d(arr)
+            arr_stack[n] = arr
+            #np.save(args.output, arr)
 
+    if args.stack:
+        arr = stack_sequences(arr_stack)
+    
 if __name__ == '__main__':
     _main()
