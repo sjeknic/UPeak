@@ -6,6 +6,7 @@ from os.path import join
 import json
 from utils.model_generator import model_generator
 import numpy as np
+from utils.plotting import display_results
 
 def _parse_args():
     parser = argparse.ArgumentParser(description='model predictions')
@@ -15,7 +16,7 @@ def _parse_args():
     parser.add_argument('-w', '--weights', help='path to weights for model')
     parser.add_argument('-m', '--model', help='path to complete model to use for predicting')
     parser.add_argument('-c', '--classes', help='number of classes. must match model', default=3, type=int)
-    parser.add_argument('-d', '--display', help='display figures with peak predictions', default=None)
+    parser.add_argument('-d', '--display', help='display figures with peak predictions. row col for fig display.', default=None, type=int, nargs=2)
     return parser.parse_args()
 
 def _main():
@@ -46,6 +47,9 @@ def _main():
 
     Path(args.output).mkdir(parents=False, exist_ok=True)
     np.save(join(args.output, 'predictions.npy'), result)
+
+    if args.display is not None:
+        display_results(traces[:, :, 0], result, row=args.display[0], col=args.display[1])
 
 if __name__ == '__main__':
     _main()
