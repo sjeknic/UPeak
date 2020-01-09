@@ -121,7 +121,7 @@ class DataGenerator(Sequence):
         self.length = length
         self.batch_size = batch_size
         self.steps = steps
-        self.list_idxs = pick_positions(traces, labels, self.batch_size*self.steps) # I think this could be done every epoch to improve training
+        self.list_idxs = pick_positions(traces, labels, self.batch_size*self.steps, length=self.length)
         self.idxs = np.arange(len(self.list_idxs))
         self.shuffle = shuffle
         self.augment = augment
@@ -150,7 +150,7 @@ class DataGenerator(Sequence):
     
     def on_epoch_end(self):
         'randomize order after each epoch'
-        self.list_idxs = pick_positions(self.traces, self.labels, self.batch_size*self.steps)
+        self.list_idxs = pick_positions(self.traces, self.labels, self.batch_size*self.steps, length=self.length)
         self.idxs = np.arange(len(self.list_idxs))
         if self.shuffle == True:
             np.random.shuffle(self.idxs)

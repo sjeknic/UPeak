@@ -3,9 +3,20 @@ import argparse
 import numpy as np
 from utils.data_processing import load_data, DataGenerator, gen_train_test
 from utils.utils import save_model
+import keras
 from keras.models import model_from_json
+from keras import callbacks
 from utils.model_generator import model_generator
 from utils.loss import weighted_categorical_crossentropy
+from os.path import join
+from pathlib import Path
+
+def define_callbacks(output_path):
+    csv_logger = callbacks.CSVLogger(join(output_path, 'training.log'))
+    # earlystop = callbacks.EarlyStopping(monitor='loss', patience=2)
+    fpath = join(output, 'weights.{epoch:02d}-{loss:.2f}-{categorical_accuracy:.2f}.hdf5')
+    cp_cb = callbacks.ModelCheckpoint(filepath=fpath, monitor='loss', save_best_only=True)
+    return [csv_logger, cp_cb]
 
 def _parse_args():
 
@@ -18,7 +29,7 @@ def _parse_args():
     parser.add_argument('-b', '--batch', default=32, type=int)
     parser.add_argument('-s', '--steps', default=500, type=int)
     parser.add_argument('-w', '--weights', help='weights for loss function', default=None, nargs='*', type=float) 
-    parser.add_argument('-f', '--frac', help='fraction to use as test set', default=0.1, type=float)
+    parser.add_argument('-f', '--frac', help='fraction to use as test set', default=0.2, type=float)
     parser.add_argument('-p', '--optimizer', help='optimizer for model compilation', default='rmsprop')
     parser.add_argument('-a', '--augment', help='add this to include augmented data too', action='store_true')
     return parser.parse_args()
@@ -30,25 +41,38 @@ def _main():
     traces, labels = load_data(args.traces, args.labels)
     train_traces, train_labels, test_traces, test_labels = gen_train_test(traces, labels, args.frac)
 
-    #make data generators
-    training_set_generator = DataGenerator(train_traces, train_labels, batch_size=args.batch, steps=args.steps, augment=args.augment)
-    test_set_generator = DataGenerator(test_traces, test_labels, batch_size=args.batch, steps=args.steps, augment=args.augment)
-    input_dims = (training_set_generator[0][0].shape[1], training_set_generator[0][0].shape[2], labels.shape[2]) # (trace length, input dimension (1), output dimension (classes))
-
     if args.model is not None:
         # skip model generation and use previously made model structure
+        # with open(args.model, 'r') as json_file:
+        #     model = model_from_json(json_file.read())
         with open(args.model, 'r') as json_file:
-            model = model_from_json(json_file.read())
+            od = json.load(json_file)
+
+        input_dims = (od['dims'][0], od['dims'][1], od['classes'])
+        print(input_dims)
+
+        model = model_generator(input_dims=input_dims, steps=od['steps'], conv_layers=od['layers'],
+            filters=od['filters'], kernel_size=od['kernel'], strides=od['stride'], transfer=od['transfer'],
+            activation=od['activation'], padding=od['padding'])
     else:
         # generate default model structure
+        input_dims = (64, 1, 3) #default is len 64, dim 1, classes 3
         model = model_generator(input_dims=input_dims)
+
+    #make data generators
+    training_set_generator = DataGenerator(train_traces, train_labels, length=input_dims[0], batch_size=args.batch, steps=args.steps, augment=args.augment)
+    test_set_generator = DataGenerator(test_traces, test_labels, length=input_dims[0], batch_size=args.batch, steps=args.steps, augment=False)
+    #input_dims = (training_set_generator[0][0].shape[1], training_set_generator[0][0].shape[2], labels.shape[2]) # (trace length, input dimension (1), output dimension (classes))
 
     # if no weights are provided, training is done with equal weights
     if args.weights is None:
         args.weights = [1.0 for i in range(0, labels.shape[2])]
 
     # should add options for different loss functions and different metrics
-    model.compile(optimizer=args.optimizer, metrics=['accuracy'], loss=weighted_categorical_crossentropy(args.weights))
+    model.compile(optimizer=args.optimizer, metrics=[keras.metrics.categorical_accuracy], loss=weighted_categorical_crossentropy(args.weights))
+
+    #should create output dir in order to have somewhere to save callbacks
+    #cb = define_callbacks(args.output)
 
     model.fit_generator(generator=training_set_generator, epochs=args.epochs, validation_data=test_set_generator,
         validation_steps=test_traces.shape[0])
