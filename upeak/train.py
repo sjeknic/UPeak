@@ -14,7 +14,7 @@ from pathlib import Path
 def define_callbacks(output_path):
     csv_logger = callbacks.CSVLogger(join(output_path, 'training.log'))
     # earlystop = callbacks.EarlyStopping(monitor='loss', patience=2)
-    fpath = join(output, 'weights.{epoch:02d}-{loss:.2f}-{categorical_accuracy:.2f}.hdf5')
+    fpath = join(output_path, 'weights.{epoch:02d}-{loss:.2f}-{categorical_accuracy:.2f}.hdf5')
     cp_cb = callbacks.ModelCheckpoint(filepath=fpath, monitor='loss', save_best_only=True)
     return [csv_logger, cp_cb]
 
@@ -43,13 +43,10 @@ def _main():
 
     if args.model is not None:
         # skip model generation and use previously made model structure
-        # with open(args.model, 'r') as json_file:
-        #     model = model_from_json(json_file.read())
         with open(args.model, 'r') as json_file:
             od = json.load(json_file)
 
         input_dims = (od['dims'][0], od['dims'][1], od['classes'])
-        print(input_dims)
 
         model = model_generator(input_dims=input_dims, steps=od['steps'], conv_layers=od['layers'],
             filters=od['filters'], kernel_size=od['kernel'], strides=od['stride'], transfer=od['transfer'],
@@ -62,7 +59,7 @@ def _main():
     #make data generators
     training_set_generator = DataGenerator(train_traces, train_labels, length=input_dims[0], batch_size=args.batch, steps=args.steps, augment=args.augment)
     test_set_generator = DataGenerator(test_traces, test_labels, length=input_dims[0], batch_size=args.batch, steps=args.steps, augment=False)
-    #input_dims = (training_set_generator[0][0].shape[1], training_set_generator[0][0].shape[2], labels.shape[2]) # (trace length, input dimension (1), output dimension (classes))
+    test_t, test_l = test_set_generator[0]
 
     # if no weights are provided, training is done with equal weights
     if args.weights is None:
@@ -71,11 +68,11 @@ def _main():
     # should add options for different loss functions and different metrics
     model.compile(optimizer=args.optimizer, metrics=[keras.metrics.categorical_accuracy], loss=weighted_categorical_crossentropy(args.weights))
 
-    #should create output dir in order to have somewhere to save callbacks
-    #cb = define_callbacks(args.output)
+    #define callbacks at each epoch
+    Path(args.output).mkdir(parents=False, exist_ok=True)
+    cb = define_callbacks(args.output)
 
-    model.fit_generator(generator=training_set_generator, epochs=args.epochs, validation_data=test_set_generator,
-        validation_steps=test_traces.shape[0])
+    model.fit_generator(generator=training_set_generator, epochs=args.epochs, validation_data=(test_t, test_l), callbacks=cb)
 
     save_model(model, path=args.output)
 
