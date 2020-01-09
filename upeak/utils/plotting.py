@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 import numpy as np
 
-def generate_lc(trace, result, target=2, low=0, high=1, cmap='plasma'):
+def generate_lc(trace, result, target=2, low=0, high=1, cmap='viridis'):
     x = np.arange(0, len(trace))
     points = np.array([x, trace]).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
@@ -38,4 +38,3 @@ def display_results(traces, results, row=10, col=4, size=(11.69, 8.27), lw=2, yl
     plt.setp(ax, xlim=xlim, ylim=ylim)
     fig.colorbar(line, ax=ax)
     plt.show()
-

@@ -11,6 +11,7 @@ def start_gui(path, output_dir='.', y_limit=[0, 4]):
     global latest_plot, latest_x, traces, plot_count, all_plots, stack_size, save_dir, yaxis
 
     traces = np.load(path)
+    print('Dimensions: {0}'.format(traces.shape))
 
     save_dir = output_dir
     Path(save_dir).mkdir(parents=False, exist_ok=True)
