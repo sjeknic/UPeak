@@ -1,5 +1,6 @@
 import keras
 from keras.layers import Conv1D, MaxPooling1D, UpSampling1D, BatchNormalization, Input, Activation
+from keras.layers.advanced_activations import LeakyReLU
 
 def model_generator(input_dims=(64, 1, 3), steps=3, conv_layers=2, transfer=False, filters=16, kernel_size=8, strides=1, activation='relu', padding='same'):
     '''
@@ -9,6 +10,10 @@ def model_generator(input_dims=(64, 1, 3), steps=3, conv_layers=2, transfer=Fals
     transfer: if True, will cut and paste encoding layers to decoding layers (as in unet paper)
     '''
 
+    if activation == 'LeakyReLU':
+        lrelu = lambda x: LeakyReLU(alpha=0.3)(x)
+        activation = lrelu
+
     x = Input(shape=(input_dims[0], input_dims[1]))
     y, transfer_layers = pooling_module(x, [steps, conv_layers], filters=filters, kernel_size=kernel_size, strides=strides, activation=activation, padding=padding)
 
@@ -17,7 +22,7 @@ def model_generator(input_dims=(64, 1, 3), steps=3, conv_layers=2, transfer=Fals
     else:
         kk = kernel_size
 
-    base = conv_layer_module(y[-1], conv_layers, filters=filters * (2**steps), kernel_size=kk)
+    base = conv_layer_module(y[-1], conv_layers, filters=filters * (2**steps), kernel_size=kk, activation=activation, padding=padding)
 
     if transfer:
         transfer_layers = transfer_layers[::-1]
@@ -27,7 +32,7 @@ def model_generator(input_dims=(64, 1, 3), steps=3, conv_layers=2, transfer=Fals
     filters = base.shape[-1]
     z = upsampling_module(base, [steps, conv_layers], transfer_layers=transfer_layers, filters=filters, kernel_size=kernel_size, strides=strides, activation=activation, padding=padding)
 
-    output = Conv1D(input_dims[2], input_dims[1])(z[-1])
+    output = Conv1D(input_dims[2], 1)(z[-1]) #Conv1D(input_dims[2], input_dims[1])(z[-1])
     output = Activation('softmax')(output)
 
     return keras.models.Model(x, output)
