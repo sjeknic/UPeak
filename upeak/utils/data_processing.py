@@ -1,7 +1,9 @@
 import numpy as np
 import argparse
 from keras.utils import to_categorical, Sequence
-from utils.augmenter import gen_augment_arr
+from utils.augmenter import gen_augment_arr, normalize_zscore
+from os.path import join
+from pathlib import Path
 
 def nan_helper(y):
     return np.isnan(y), lambda z: z.nonzero()[0]
@@ -60,7 +62,6 @@ def label_adjuster(l):
 def stack_sequences(seq_list, cv=np.nan):
     '''
     Input list of 2d arrays. pads ends of traces with nan to same length and stacks traces
-    Still needs to be tested for several different sizes of arrays.
     '''
     l_max = np.max([a.shape[1]for a in seq_list])
     seq_list = [np.pad(a, ((0, 0), (0, l_max - a.shape[1])), constant_values=cv) for a in seq_list]
@@ -80,9 +81,20 @@ def load_data(traces, labels=None):
 
     return traces, labels
 
-def pick_positions(traces, labels, num, length=64):
+def pick_all_positions(traces, length=128):
+    first_nan = np.logical_not(np.isnan(traces)).argmin(axis=1)
+
+    positions = []
+    for i, fn in enumerate(first_nan):
+        end = fn if fn > 0 else traces.shape[1]
+        cols = np.arange(0, end - length)   
+        positions.extend([(i, y) for y in cols])
+
+    return positions
+
+def pick_random_positions(traces, num, length=64):
     '''
-    inputs array of traces and labels. returns num traces and labels of length len.
+    inputs array of traces and labels. positions of traces and labels that will include no nans
     would be better to check for nans before the position is picked, as opposed to after, but I'll see how it works
     '''
     first_nan = np.logical_not(np.isnan(traces)).argmin(axis=1) #loc of first nan in each row
@@ -93,8 +105,8 @@ def pick_positions(traces, labels, num, length=64):
     #probably a faster way to do this...
     for n, r in enumerate(rand_row):
         c = rand_col[n]
-        if ((c + length) >= first_nan[r]) and (first_nan[r]>0):
-            rand_col[n] = np.random.randint(0, first_nan[r]-length)
+        if ((c + length) >= first_nan[r, 0]) and (first_nan[r, 0]>0): #remove the second indice in indexing first_nan if you get errors
+            rand_col[n] = np.random.randint(0, first_nan[r, 0]-length)
             
     return list(zip(rand_row, rand_col))
 
@@ -115,25 +127,29 @@ def gen_train_test(traces, labels, frac=0.1):
     return train_traces, train_labels, test_traces, test_labels
 
 class DataGenerator(Sequence):
-    def __init__(self, traces, labels, length=64, batch_size=32, steps=1000, shuffle=True, augment=False):
+    def __init__(self, traces, labels, length=64, batch_size=32, steps=500, shuffle=True, augment=False):
         self.traces = traces
         self.labels = labels
         self.length = length
         self.batch_size = batch_size
         self.steps = steps
-        self.list_idxs = pick_positions(traces, labels, self.batch_size*self.steps, length=self.length)
-        self.idxs = np.arange(len(self.list_idxs))
         self.shuffle = shuffle
         self.augment = augment
-    
+        self.list_idxs = pick_all_positions(traces, length=self.length)
+
+        if len(self.list_idxs) > (self.batch_size * self.steps):
+            self.idxs = np.random.choice(len(self.list_idxs), self.batch_size*self.steps, replace=False)
+        else:
+            self.idxs = np.arange(len(self.list_idxs))
+
     def __len__(self):
         'num batches per epoch'
-        return int(np.floor(len(self.list_idxs))/self.batch_size)
+        return int(np.floor(len(self.idxs))/self.batch_size)
     
     def __getitem__(self, index):
         'returns one batch of data'
         #indexs for the batch
-        indexs = self.idxs[index*self.batch_size:(index+1)*self.batch_size]
+        indexs = self.idxs[index*self.batch_size : (index+1)*self.batch_size]
 
         #list of points
         data_idxs = [self.list_idxs[i] for i in indexs]
@@ -142,6 +158,7 @@ class DataGenerator(Sequence):
 
         if self.augment == True:
             #sloppy
+            #also not working great now. Should be changed to concatenation, but that would have to be done somewhere else, possibly at data load
             aug_arr = gen_augment_arr((x.shape[0], x.shape[1]))
             x = x[:, :, 0] * aug_arr
             x = np.expand_dims(x, axis=-1)
@@ -150,13 +167,13 @@ class DataGenerator(Sequence):
     
     def on_epoch_end(self):
         'randomize order after each epoch'
-        self.list_idxs = pick_positions(self.traces, self.labels, self.batch_size*self.steps, length=self.length)
-        self.idxs = np.arange(len(self.list_idxs))
+        #self.list_idxs = pick_random_positions(self.traces, self.batch_size*self.steps, length=self.length)
+        #self.idxs = np.arange(len(self.list_idxs))
         if self.shuffle == True:
             np.random.shuffle(self.idxs)
     
     def __data_generation(self, data_idxs):
-        t_patch = np.array([self.traces[r, c:c+self.length] for (r, c) in data_idxs])
+        t_patch = np.array([self.traces[r, c:c+self.length, :] for (r, c) in data_idxs])
         l_patch = np.array([self.labels[r, c:c+self.length, :] for (r, c) in data_idxs])
         
         return t_patch, l_patch
@@ -166,7 +183,8 @@ def _parse_args():
     parser = argparse.ArgumentParser(description='data processor')
     parser.add_argument('-n', '--nans', help='add if nans need to be removed', action='store_true')
     parser.add_argument('-l', '--labels', help='add if label categories need to be set', action='store_true')
-    parser.add_argument('-s', '--stack', help='stack input traces. will pad with nan', action='store_true')
+    parser.add_argument('-s', '--stack', help='stack input traces. 0=pad with 0, 1= pad with nan', default=None, type=int)
+    parser.add_argument('-z', '--zscore', help='generate z-score normalized traces', action='store_true')
     parser.add_argument('-o', '--output', help='where to save the output array', default='.')
     parser.add_argument('-i', '--input', help='path to input array', nargs='*')
     return parser.parse_args()
@@ -176,20 +194,30 @@ def _main():
     args = _parse_args()
     arr_stack = [np.load(a) for a in args.input]
 
+    Path(args.output).mkdir(parents=False, exist_ok=True)
+
     if args.nans:
         for n, arr in enumerate(arr_stack): 
             arr = nan_helper_2d(arr)
             arr_stack[n] = arr
-            #np.save(args.output, arr)
-
-    if args.labels: 
+        out_arr = stack_sequences(arr_stack, cv=np.nan)
+        np.save(join(args.output, 'output_array.npy'), out_arr)
+    elif args.labels: 
         for n, arr in enumerate(arr_stack):
             arr = label_adjuster_2d(arr)
             arr_stack[n] = arr
-            #np.save(args.output, arr)
+        out_arr = stack_sequences(arr_stack, cv=0)
+        np.save(join(args.output, 'output_array.npy'), out_arr)
+    elif args.zscore:
+        for n, arr in enumerate(arr_stack):
+            arr = normalize_zscore(arr, by_row=True)
+            arr_stack[n] = arr
+        out_arr = stack_sequences(arr_stack, cv=np.nan)
+        np.save(join(args.output, 'output_array.npy'), out_arr)
+    elif args.stack is not None:
+        cv = [0, np.nan][args.stack]
+        out_arr = stack_sequences(arr_stack, cv=cv)
+        np.save(join(args.output, 'output_array.npy'), out_arr)
 
-    if args.stack:
-        arr = stack_sequences(arr_stack)
-    
 if __name__ == '__main__':
     _main()
