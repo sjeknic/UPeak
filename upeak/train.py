@@ -2,6 +2,7 @@ import json
 import argparse
 import numpy as np
 from utils.data_processing import load_data, DataGenerator, gen_train_test
+from utils.augmenter import _augment, _normalize
 from utils.utils import save_model
 import keras
 from keras.models import model_from_json
@@ -10,6 +11,9 @@ from utils.model_generator import model_generator
 from utils.loss import weighted_categorical_crossentropy
 from os.path import join
 from pathlib import Path
+from _setting import FRAC_TEST, VAL_STEPS
+from _setting import AUG_FUNCS, AUG_OPTIONS, AUG_METHOD
+from _setting import NORM_FUNCS, NORM_OPTIONS, NORM_METHOD
 
 def define_callbacks(output_path):
     csv_logger = callbacks.CSVLogger(join(output_path, 'training.log'))
@@ -25,22 +29,31 @@ def _parse_args():
     parser.add_argument('-l', '--labels', help='path to .npy file with labels', nargs='*')
     parser.add_argument('-o', '--output', help='path to save model weights', default='./output')
     parser.add_argument('-m', '--model', help='path to custom model structure. otherwise default.')
-    parser.add_argument('-e', '--epochs', default=50, type=int)
+    parser.add_argument('-e', '--epochs', default=10, type=int)
     parser.add_argument('-b', '--batch', default=32, type=int)
     parser.add_argument('-s', '--steps', default=500, type=int)
     parser.add_argument('-w', '--weights', help='weights for loss function', default=None, nargs='*', type=float) 
-    parser.add_argument('-f', '--frac', help='fraction to use as test set', default=0.2, type=float)
     parser.add_argument('-p', '--optimizer', help='optimizer for model compilation', default='rmsprop')
-    parser.add_argument('-a', '--augment', help='add this to include augmented data too', action='store_true')
+    parser.add_argument('-a', '--augment', help='add this to include augmented data too. Set options in _setting.py', action='store_true')
+    parser.add_argument('-n', '--normalize', help='add this to include normalization of data. Set options in _setting.py', action='store_true')
     return parser.parse_args()
 
 def _main():
     args = _parse_args()
 
-    # load data
+    # Load data, pick training set, filter non_responders
     traces, labels = load_data(args.traces, args.labels)
-    train_traces, train_labels, test_traces, test_labels = gen_train_test(traces, labels, args.frac)
+    train_traces, train_labels, test_traces, test_labels = gen_train_test(traces, labels, FRAC_TEST)
 
+    # Apply augmentation and normalization
+    if args.augment:
+        train_traces, train_labels = _augment(AUG_FUNCS, AUG_OPTIONS, AUG_METHOD, train_traces, train_labels)
+
+    if args.normalize:
+        train_traces = _normalize(NORM_FUNCS, NORM_OPTIONS, NORM_METHOD, train_traces)
+        test_traces = _normalize(NORM_FUNCS, NORM_OPTIONS, NORM_METHOD, test_traces)
+
+    # Build model
     if args.model is not None:
         # skip model generation and use previously made model structure
         with open(args.model, 'r') as json_file:
@@ -56,24 +69,27 @@ def _main():
         input_dims = (64, 1, 3) #default is len 64, dim 1, classes 3
         model = model_generator(input_dims=input_dims)
 
-    #make data generators
+    # Make data generators
     training_set_generator = DataGenerator(train_traces, train_labels, length=input_dims[0], batch_size=args.batch, steps=args.steps, augment=args.augment)
-    test_set_generator = DataGenerator(test_traces, test_labels, length=input_dims[0], batch_size=args.batch, steps=args.steps, augment=False)
-    test_t, test_l = test_set_generator[0]
+    test_set_generator = DataGenerator(test_traces, test_labels, length=input_dims[0], batch_size=VAL_STEPS, steps=1, augment=False)
+    test_t, test_l = test_set_generator[0] # set static training set
 
-    # if no weights are provided, training is done with equal weights
+    # If no weights are provided, training is done with equal weights
     if args.weights is None:
         args.weights = [1.0 for i in range(0, labels.shape[2])]
 
-    # should add options for different loss functions and different metrics
+    # Compile
+    # Currently only one loss function is possible
     model.compile(optimizer=args.optimizer, metrics=[keras.metrics.categorical_accuracy], loss=weighted_categorical_crossentropy(args.weights))
 
-    #define callbacks at each epoch
+    # Define callbacks
     Path(args.output).mkdir(parents=False, exist_ok=True)
     cb = define_callbacks(args.output)
 
+    # Fit model
     model.fit_generator(generator=training_set_generator, epochs=args.epochs, validation_data=(test_t, test_l), callbacks=cb)
 
+    # Save model
     save_model(model, path=args.output)
 
 if __name__ == "__main__":
