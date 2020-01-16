@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 import numpy as np
 
-def generate_lc(trace, result, target=2, low=0, high=1, cmap='viridis'):
+def generate_lc(trace, result, target=-1, low=0, high=1, cmap='viridis'):
     x = np.arange(0, len(trace))
     points = np.array([x, trace]).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
