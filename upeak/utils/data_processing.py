@@ -19,7 +19,7 @@ def nan_helper_2d(arr):
     return temp
 
 def label_adjuster_2d(labels):
-    # shouldn't be used
+    # No longer being used
 
     lab_strat = None
     for l in labels:
@@ -32,10 +32,9 @@ def label_adjuster_2d(labels):
 
     return lab_strat
 
-def label_adjuster(l):
-    # messy, should be done on whole array at once, not one row at a time
-    # also, should be done in place
-
+def label_adjuster_3classes(l):
+    # OLD
+    # Should not be used unless model structure requires it
     if not np.count_nonzero(l) == 0:
         ones = np.where(l==1)[0]
         twos = np.where(l==2)[0]
@@ -58,6 +57,50 @@ def label_adjuster(l):
                 l[t] = 1
                 l[o+1:] = 2
     return l
+
+def label_adjuster(l):
+    '''
+    Fills in 1 for points that are in peaks and 0 everywhere else.
+    There has to be a much, much neater way to do this, but I'm not sure how to deal with edge cases
+    '''
+    if not np.count_nonzero(l) == 0:
+        ones = np.where(l==1)[0]
+        twos = np.where(l==2)[0]
+
+        if len(ones) > len(twos):
+            l[ones[-1]+1:] = 1
+            l[ones[-1]] = 0
+            ones = ones[:-1]
+        elif len(ones) < len(twos):
+            l[:twos[0]] = 1
+            l[twos[0]] = 0
+            twos = twos[1:]
+
+        for o, t in zip(ones, twos):
+            if o < t:
+                l[o+1:t] = 1
+                l[t] = 0
+            elif t < o: # this should be case of end of peak at start of trace, start of peak at end of trace
+                l[:t] = 1
+                l[t] = 0
+                l[o+1:] = 1
+    return l
+
+def pad_traces(traces, model_size, pad_mode='edge', cv=0):
+    '''
+    pad_mode is edge or constant.
+    if edge, repeats last value from trace. if constant, pads with cv
+    traces are padded at the end. might be good to add functionality to pad at the start of trace
+    '''
+    options_dict = {'constant_values':cv} if pad_mode == 'constant' else {}
+    target_mod = 2 ** model_size
+    diff = target_mod - (traces.shape[1] % target_mod)
+
+    if diff == target_mod:
+        # no padding needed
+        return traces
+    else:
+        return np.pad(traces, pad_width=((0, 0), (0, diff), (0, 0)), mode=pad_mode, **options_dict)
 
 def stack_sequences(seq_list, cv=np.nan):
     '''
@@ -86,6 +129,8 @@ def pick_all_positions(traces, length=128):
 
     positions = []
     for i, fn in enumerate(first_nan):
+        if len(fn) > 1: #required if more than one input feature. All fn should be identical
+            fn = fn[0]
         end = fn if fn > 0 else traces.shape[1]
         cols = np.arange(0, end - length)   
         positions.extend([(i, y) for y in cols])
@@ -94,6 +139,7 @@ def pick_all_positions(traces, length=128):
 
 def pick_random_positions(traces, num, length=64):
     '''
+    No longer being used...
     inputs array of traces and labels. positions of traces and labels that will include no nans
     would be better to check for nans before the position is picked, as opposed to after, but I'll see how it works
     '''
@@ -110,7 +156,7 @@ def pick_random_positions(traces, num, length=64):
             
     return list(zip(rand_row, rand_col))
 
-def gen_train_test(traces, labels, frac=0.1):
+def gen_train_test(traces, labels, frac=0.2):
     num_test_rows = int(np.floor(frac * traces.shape[0]))
     test_rows = np.random.choice(traces.shape[0], num_test_rows, replace=False)
 
@@ -127,14 +173,13 @@ def gen_train_test(traces, labels, frac=0.1):
     return train_traces, train_labels, test_traces, test_labels
 
 class DataGenerator(Sequence):
-    def __init__(self, traces, labels, length=64, batch_size=32, steps=500, shuffle=True, augment=False):
+    def __init__(self, traces, labels, length=64, batch_size=32, steps=500, shuffle=True):
         self.traces = traces
         self.labels = labels
         self.length = length
         self.batch_size = batch_size
         self.steps = steps
         self.shuffle = shuffle
-        self.augment = augment
         self.list_idxs = pick_all_positions(traces, length=self.length)
 
         if len(self.list_idxs) > (self.batch_size * self.steps):
@@ -154,21 +199,13 @@ class DataGenerator(Sequence):
         #list of points
         data_idxs = [self.list_idxs[i] for i in indexs]
         
+        #extract data
         x, y = self.__data_generation(data_idxs)
-
-        if self.augment == True:
-            #sloppy
-            #also not working great now. Should be changed to concatenation, but that would have to be done somewhere else, possibly at data load
-            aug_arr = gen_augment_arr((x.shape[0], x.shape[1]))
-            x = x[:, :, 0] * aug_arr
-            x = np.expand_dims(x, axis=-1)
         
         return x, y
     
     def on_epoch_end(self):
         'randomize order after each epoch'
-        #self.list_idxs = pick_random_positions(self.traces, self.batch_size*self.steps, length=self.length)
-        #self.idxs = np.arange(len(self.list_idxs))
         if self.shuffle == True:
             np.random.shuffle(self.idxs)
     
