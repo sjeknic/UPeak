@@ -76,11 +76,13 @@ def button(event):
         make_next_plot(plot_count)
 
     elif event.key == 'b': #go back to previous trace
-        all_plots = all_plots[:-1, :]
-        plot_count += -1
-        print('Deleted last trace. New size: {0}'.format(all_plots.shape))
-        if not plot_count < 0:
+        if not plot_count <= 0:
+            all_plots = all_plots[:-1, :]
+            plot_count += -1
+            print('Deleted last trace. New size: {0}'.format(all_plots.shape))
             make_next_plot(plot_count)
+        else:
+            print('No trace to delete.')
 
     elif event.key == 'x': #save all traces up until now. Must be done after 'n' to include current trace.
 
