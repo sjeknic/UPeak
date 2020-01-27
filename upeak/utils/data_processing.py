@@ -187,12 +187,14 @@ class DataGenerator(Sequence):
         else:
             self.idxs = np.arange(len(self.list_idxs))
 
+        np.random.shuffle(self.idxs)
+
     def __len__(self):
-        'num batches per epoch'
+        '''num batches per epoch'''
         return int(np.floor(len(self.idxs))/self.batch_size)
     
     def __getitem__(self, index):
-        'returns one batch of data'
+        '''returns one batch of data'''
         #indexs for the batch
         indexs = self.idxs[index*self.batch_size : (index+1)*self.batch_size]
 
@@ -205,7 +207,7 @@ class DataGenerator(Sequence):
         return x, y
     
     def on_epoch_end(self):
-        'randomize order after each epoch'
+        '''randomize order after each epoch'''
         if self.shuffle == True:
             np.random.shuffle(self.idxs)
     
