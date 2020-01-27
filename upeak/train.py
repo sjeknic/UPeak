@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 from utils.data_processing import load_data, DataGenerator, gen_train_test
 from utils.augmenter import _augment, _normalize
-from utils.utils import save_model
+from utils.utils import save_model, _parse_inputs
 import keras
 from keras.models import model_from_json
 from keras import callbacks
@@ -17,8 +17,8 @@ from _setting import NORM_FUNCS, NORM_OPTIONS, NORM_METHOD
 
 def define_callbacks(output_path):
     csv_logger = callbacks.CSVLogger(join(output_path, 'training.log'))
-    earlystop = callbacks.EarlyStopping(monitor='val_categorical_accuracy', patience=2, restore_best_weights=True)
-    fpath = join(output_path, 'weights.{epoch:02d}-{val_loss:.2f}-{categorical_accuracy:.2f}.hdf5')
+    earlystop = callbacks.EarlyStopping(monitor='val_categorical_accuracy', patience=3, restore_best_weights=True)
+    fpath = join(output_path, 'weights.{epoch:02d}-{val_loss:.2f}-{val_categorical_accuracy:.2f}.hdf5')
     cp_cb = callbacks.ModelCheckpoint(filepath=fpath, monitor='loss', save_best_only=True)
     return [csv_logger, earlystop, cp_cb]
 
@@ -42,7 +42,9 @@ def _main():
     args = _parse_args()
 
     # Load data, pick training set, filter non_responders
-    traces, labels = load_data(args.traces, args.labels)
+    traces = _parse_inputs(args.traces)
+    labels = _parse_inputs(args.labels)
+    traces, labels = load_data(traces, labels)
     train_traces, train_labels, test_traces, test_labels = gen_train_test(traces, labels, FRAC_TEST)
 
     # Apply augmentation and normalization
@@ -66,7 +68,7 @@ def _main():
             activation=od['activation'], padding=od['padding'])
     else:
         # generate default model structure
-        input_dims = (64, 1, 3) #default is len 64, dim 1, classes 3
+        input_dims = (128, 1, 3) #default is len 64, dim 1, classes 3
         model = model_generator(input_dims=input_dims)
 
     # Make data generators

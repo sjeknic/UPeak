@@ -10,6 +10,7 @@ from utils.plotting import display_results
 from _setting import NORM_FUNCS, NORM_OPTIONS, NORM_METHOD
 from _setting import PAD_MODE, PAD_CV
 from utils.augmenter import _normalize
+from utils.utils import _parse_inputs
 
 def _parse_args():
     parser = argparse.ArgumentParser(description='model predictions')
@@ -26,8 +27,10 @@ def _parse_args():
 def _main():
     args = _parse_args()
 
-    traces, _ = load_data(args.traces)
-
+    traces = _parse_inputs(args.traces)
+    traces, _ = load_data(traces)
+    plot_traces = np.copy(traces)
+    
     if args.normalize:
         traces = _normalize(NORM_FUNCS, NORM_OPTIONS, NORM_METHOD, traces)
 
@@ -60,7 +63,7 @@ def _main():
     np.save(join(args.output, 'predictions.npy'), result)
 
     if args.display is not None:
-        display_results(traces[:, :, 0], result, row=args.display[0], col=args.display[1])
+        display_results(plot_traces[:, :, 0], result, row=args.display[0], col=args.display[1])
 
 if __name__ == '__main__':
     _main()
