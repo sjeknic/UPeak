@@ -11,15 +11,27 @@ AUG_METHOD = ['inplace', 'stack'] #options are stack (which adds the traces to t
 
 # NORMALIZATION SETTINGS
 
-NORM_FUNCS = ['amplitude', 'zscore'] #options are zscore, amplitude, gradient. Including both should only work with concatenation method
+NORM_FUNCS = ['amplitude', 'zscore'] #options are zscore, amplitude, gradient, maxabs, norm. Including both should only work with concatenation method
 NORM_OPTIONS = [{}] #kwargs for the normalization functions above
 NORM_METHOD = ['inplace', 'concatenate'] #options are inplace or concatenate. If concatenate, the model must be set up to take input vectors with greater than one feature.
 
 # ACTIVATION SETTINGS 
+
 ALPHA = 0.3 # alpha for paramaterized relu or LeakyReLU
 
 # PAD SETTINGS
+
 PAD_MODE = 'constant'
 PAD_CV = 0
 
-# DISPLAY SETTINGS
+# DISPLAY/SAVE SETTINGS
+
+DISP_ROWS = 8
+DISP_COLS = 4
+DISP_SIZE = (11.69, 8.27) #inches
+DISP_YLIM = [0, 4]
+DISP_LW = 2
+DISP_NUMFIGS = 5
+DISP_CLASS = -1 
+DISP_CMAP = 'plasma'
+DISP_FORMAT = 'png'

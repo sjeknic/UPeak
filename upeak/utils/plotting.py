@@ -1,8 +1,13 @@
 import matplotlib.pyplot as plt 
 from matplotlib.collections import LineCollection
 import numpy as np
+from _setting import DISP_ROWS, DISP_COLS, DISP_SIZE, DISP_YLIM, DISP_LW, DISP_NUMFIGS, DISP_CLASS, DISP_CMAP, DISP_FORMAT
+from os.path import join
+from pathlib import Path
 
-def generate_lc(trace, result, target=-1, low=0, high=1, cmap='viridis'):
+print(DISP_NUMFIGS)
+
+def generate_lc(trace, result, target=DISP_CLASS, low=0, high=1, cmap=DISP_CMAP):
     x = np.arange(0, len(trace))
     points = np.array([x, trace]).T.reshape(-1, 1, 2)
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
@@ -23,7 +28,7 @@ def pick_traces(traces, results, num_plots=40):
 
     return sel_traces, sel_results
 
-def display_results(traces, results, row=10, col=4, size=(11.69, 8.27), lw=2, ylim=(0, 4)):
+def display_results(traces, results, row=DISP_ROWS, col=DISP_COLS, size=DISP_SIZE, lw=DISP_LW, ylim=DISP_YLIM):
     num_plots = row * col
     sel_traces, sel_results = pick_traces(traces, results, num_plots)
 
@@ -38,3 +43,28 @@ def display_results(traces, results, row=10, col=4, size=(11.69, 8.27), lw=2, yl
     plt.setp(ax, xlim=xlim, ylim=ylim)
     fig.colorbar(line, ax=ax)
     plt.show()
+
+def save_figures(traces, results, save_path, numfig=DISP_NUMFIGS, row=DISP_ROWS, col=DISP_COLS, size=DISP_SIZE, lw=DISP_LW, ylim=DISP_YLIM):
+    
+    Path(save_path).mkdir(parents=False, exist_ok=True)
+
+    num_plots = row * col
+
+    if numfig * row * col >= traces.shape[0]:
+        #trying to make more plots than traces
+        numfig = np.floor(traces.shape[0] / (row * col))
+
+    for i in range(numfig):
+        fig, ax = plt.subplots(row, col, figsize=size, sharey=True, sharex=True)
+
+        for n, a in enumerate(ax.flatten()):
+            lc = generate_lc(traces[n + (i * num_plots), :], results[n + (i * num_plots), :, :])
+            lc.set_linewidth(lw)
+            line = a.add_collection(lc)
+
+        xlim = (0, traces.shape[1])
+        plt.setp(ax, xlim=xlim, ylim=ylim)
+        fig.colorbar(line, ax=ax)
+
+        plt.savefig(join(save_path, 'fig_{0}.{1}'.format(i, DISP_FORMAT)), format=DISP_FORMAT)
+        plt.close()

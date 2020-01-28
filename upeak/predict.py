@@ -6,7 +6,7 @@ from os.path import join
 import json
 from utils.model_generator import model_generator
 import numpy as np
-from utils.plotting import display_results
+from utils.plotting import display_results, save_figures
 from _setting import NORM_FUNCS, NORM_OPTIONS, NORM_METHOD
 from _setting import PAD_MODE, PAD_CV
 from utils.augmenter import _normalize
@@ -16,12 +16,12 @@ def _parse_args():
     parser = argparse.ArgumentParser(description='model predictions')
     parser.add_argument('-t', '--traces', help='path to .npy file with raw traces', nargs='*')
     parser.add_argument('-o', '--output', help='path to save model predictions', default='./output')
-    parser.add_argument('-s', '--structure', help='path to custom model structure dictionary json. otherwise default.')
+    parser.add_argument('-m', '--model', help='path to custom model structure dictionary json. otherwise default.')
     parser.add_argument('-w', '--weights', help='path to weights for model')
-    parser.add_argument('-m', '--model', help='path to complete model to use for predicting')
     parser.add_argument('-n', '--normalize', help='add this to include normalization of data. Set options in _setting.py', action='store_true')
     parser.add_argument('-c', '--classes', help='number of classes. must match model', default=3, type=int)
-    parser.add_argument('-d', '--display', help='display figures with peak predictions. row col for fig display.', default=None, type=int, nargs=2)
+    parser.add_argument('-d', '--display', help='display figures with peak predictions. row col for fig display.', action='store_true')
+    parser.add_argument('-s', '--save', help='if path provided, will save figure', default=None, type=str)
     return parser.parse_args()
 
 def _main():
@@ -34,11 +34,11 @@ def _main():
     if args.normalize:
         traces = _normalize(NORM_FUNCS, NORM_OPTIONS, NORM_METHOD, traces)
 
-    if args.structure is not None:
+    if args.model is not None:
         # recreate model that was used during training with new input layer
         # note that some dimension agreement is probably necessary
 
-        with open(args.structure, 'r') as json_file:
+        with open(args.model, 'r') as json_file:
             od = json.load(json_file)
 
         traces = pad_traces(traces, od['steps'], pad_mode=PAD_MODE, cv=PAD_CV)
@@ -62,8 +62,11 @@ def _main():
     Path(args.output).mkdir(parents=False, exist_ok=True)
     np.save(join(args.output, 'predictions.npy'), result)
 
-    if args.display is not None:
-        display_results(plot_traces[:, :, 0], result, row=args.display[0], col=args.display[1])
+    if args.save is not None:
+        save_figures(plot_traces[:, :, 0], result, args.save)
+
+    if args.display:
+        display_results(plot_traces[:, :, 0], result)
 
 if __name__ == '__main__':
     _main()
