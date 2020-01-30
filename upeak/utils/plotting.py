@@ -5,8 +5,6 @@ from _setting import DISP_ROWS, DISP_COLS, DISP_SIZE, DISP_YLIM, DISP_LW, DISP_N
 from os.path import join
 from pathlib import Path
 
-print(DISP_NUMFIGS)
-
 def generate_lc(trace, result, target=DISP_CLASS, low=0, high=1, cmap=DISP_CMAP):
     x = np.arange(0, len(trace))
     points = np.array([x, trace]).T.reshape(-1, 1, 2)
@@ -52,7 +50,7 @@ def save_figures(traces, results, save_path, numfig=DISP_NUMFIGS, row=DISP_ROWS,
 
     if numfig * row * col >= traces.shape[0]:
         #trying to make more plots than traces
-        numfig = np.floor(traces.shape[0] / (row * col))
+        numfig = int(np.floor(traces.shape[0] / (row * col)))
 
     for i in range(numfig):
         fig, ax = plt.subplots(row, col, figsize=size, sharey=True, sharex=True)
