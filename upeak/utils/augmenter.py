@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import normalize, maxabs_scale, minmax_scale
 
 def augment_decorator(func):
     def wrapper(arr, method, **kwargs):
@@ -29,18 +30,27 @@ def no_change(arr):
     return arr
 
 @augment_decorator
-def normalize_zscore(traces, by_row=True, offset=0):
+def normalize_zscore(traces, by_row=True, offset=0, normalize=False):
     '''
     by_row, if true will normalize each trace individually. False will normalize the whole stack together
     offset can be added to prevent negative values
+    if normalize is True, the zscore will be normalized to a range of [-1, 1]. May not work if taking in a concatenated array
     '''
+    
     def z_func(a, offset=offset):
         return stats.zscore(a, nan_policy='omit') + offset
 
     if by_row:
-        return np.apply_along_axis(z_func, 1, traces) # (function, axis, array)
+        arr = np.apply_along_axis(z_func, 1, traces) # (function, axis, array)
     else:
-        return z_func(traces)
+        arr = z_func(traces)
+
+    if normalize:
+        arr = arr[:, :, -1]
+        arr = maxabs_scale(arr, axis=1)
+        arr = np.expand_dims(arr, axis=-1)
+        
+    return arr
 
 @augment_decorator
 def normalize_amplitude(traces, by_row=True):
@@ -52,6 +62,29 @@ def normalize_amplitude(traces, by_row=True):
         return traces / row_maxs[:, np.newaxis]
     else:
         return traces / np.nanmax(traces)
+
+@augment_decorator
+def normalize_maxabs(traces, feat=1):
+    '''
+    normalizes on a scale from [-1, 1]
+    feature is the index of the feature to use (useful for con)
+    '''
+    if traces.ndims == 3:
+        traces = traces[:, :, feat]
+    
+    traces = maxabs_scale(traces, axis=1)
+    traces = np.expand_dims(traces, axis=-1)
+
+    return traces
+
+@augment_decorator
+def normalize_by_norm(traces, norm='l2'):
+    '''
+    this will fail if the array contains nans, which is a bit of a problem.
+    I could save a mask and then np.nan_to_num and use that
+    but I'm not sure this norm method will actually help much
+    '''
+    pass
 
 @augment_decorator
 def gardient(traces):
@@ -83,7 +116,7 @@ def _normalize(funcs, options, method, arr):
     '''
     '''
     assert len(funcs) == len(method), 'Functions and methods must be same length'
-    func_dict = {'zscore' : normalize_zscore, 'amplitude' : normalize_amplitude}
+    func_dict = {'zscore' : normalize_zscore, 'amplitude' : normalize_amplitude, 'maxabs' : normalize_maxabs, 'norm' : normalize_by_norm}
     to_run = [func_dict[f] for f in funcs]
     
     while len(to_run) > len(options):
