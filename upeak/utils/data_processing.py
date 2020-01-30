@@ -132,8 +132,9 @@ def pick_all_positions(traces, length=128):
         if len(fn) > 1: #required if more than one input feature. All fn should be identical
             fn = fn[0]
         end = fn if fn > 0 else traces.shape[1]
-        cols = np.arange(0, end - length)   
-        positions.extend([(i, y) for y in cols])
+        if end - length >= 0:
+            cols = np.arange(0, end - length)   
+            positions.extend([(i, y) for y in cols])
 
     return positions
 
