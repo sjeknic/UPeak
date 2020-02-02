@@ -17,7 +17,7 @@ from _setting import NORM_FUNCS, NORM_OPTIONS, NORM_METHOD
 
 def define_callbacks(output_path):
     csv_logger = callbacks.CSVLogger(join(output_path, 'training.log'))
-    earlystop = callbacks.EarlyStopping(monitor='val_categorical_accuracy', patience=3, restore_best_weights=True)
+    earlystop = callbacks.EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
     fpath = join(output_path, 'weights.{epoch:02d}-{val_loss:.2f}-{val_categorical_accuracy:.2f}.hdf5')
     cp_cb = callbacks.ModelCheckpoint(filepath=fpath, monitor='loss', save_best_only=True)
     return [csv_logger, earlystop, cp_cb]
@@ -55,20 +55,22 @@ def _main():
         train_traces = _normalize(NORM_FUNCS, NORM_OPTIONS, NORM_METHOD, train_traces)
         test_traces = _normalize(NORM_FUNCS, NORM_OPTIONS, NORM_METHOD, test_traces)
 
+    classes = train_labels.shape[2]
+
     # Build model
     if args.model is not None:
         # skip model generation and use previously made model structure
         with open(args.model, 'r') as json_file:
             od = json.load(json_file)
 
-        input_dims = (od['dims'][0], od['dims'][1], od['classes'])
+        input_dims = (od['dims'][0], od['dims'][1], classes)
 
         model = model_generator(input_dims=input_dims, steps=od['steps'], conv_layers=od['layers'],
             filters=od['filters'], kernel_size=od['kernel'], strides=od['stride'], transfer=od['transfer'],
             activation=od['activation'], padding=od['padding'])
     else:
         # generate default model structure
-        input_dims = (128, 1, 3) #default is len 64, dim 1, classes 3
+        input_dims = (128, 1, classes) #default is len 64, dim 1, classes 3
         model = model_generator(input_dims=input_dims)
 
     # Make data generators
