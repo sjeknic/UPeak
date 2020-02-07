@@ -55,7 +55,8 @@ def _main():
         train_traces = _normalize(NORM_FUNCS, NORM_OPTIONS, NORM_METHOD, train_traces)
         test_traces = _normalize(NORM_FUNCS, NORM_OPTIONS, NORM_METHOD, test_traces)
 
-    classes = train_labels.shape[2]
+    input_features = train_traces.shape[2]
+    output_classes = train_labels.shape[2]
 
     # Build model
     if args.model is not None:
@@ -63,7 +64,7 @@ def _main():
         with open(args.model, 'r') as json_file:
             od = json.load(json_file)
 
-        input_dims = (od['dims'][0], od['dims'][1], classes)
+        input_dims = (od['dims'][0], input_features, output_classes)
 
         model = model_generator(input_dims=input_dims, steps=od['steps'], conv_layers=od['layers'],
             filters=od['filters'], kernel_size=od['kernel'], strides=od['stride'], transfer=od['transfer'],
