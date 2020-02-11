@@ -7,12 +7,16 @@ from os.path import join
 from pathlib import Path
 from utils.data_processing import label_adjuster, nan_helper_2d
 
-def start_gui(path, output_dir='.', y_limit=[0, 4]):
+def start_gui(path, output_dir='.', y_limit=[0, 4], nans=False):
     global latest_plot, latest_x, traces, plot_count, all_plots, stack_size, save_dir, yaxis, curr_axis, temp_trace
 
     traces = np.load(path)
     temp_trace = np.copy(traces)
     temp_trace = nan_helper_2d(temp_trace)
+
+    if nans:
+        traces = temp_trace
+        
     print('Dimensions: {0}'.format(traces.shape))
 
     save_dir = output_dir
@@ -73,7 +77,7 @@ def button(event):
         if latest_x is not None:
             x_spot = int(round(latest_x))
             latest_plot[x_spot] = int(event.key)
-            print('Saved point: {0}'.format(x_spot))
+            print('Saved point: {0} as {1}'.format(x_spot, event.key))
 
             if not np.isnan(traces[plot_count][x_spot]):
                 plt.plot(x_spot, traces[plot_count][x_spot], 'o', color=['g', 'r', 'c'][int(event.key)-1], markersize=8)
@@ -89,12 +93,25 @@ def button(event):
         else:
             print('No point saved.')
 
+    elif event.key == '0': # remove a single point
+        if latest_x is not None:
+            x_spot = int(round(latest_x))
+            if latest_plot[x_spot] > 0:
+                latest_plot[x_spot] = 0
+                print('Deleted point: {0}'.format(x_spot))
+                make_next_plot(plot_count, temp_yaxis=curr_axis)
+            else:
+                print('No point at {0} to delete.'.format(x_spot))
+        else:
+            print('No point deleted.')
+
     elif event.key == 'r': #reset current trace
         latest_plot = np.zeros(latest_plot.shape)
         print('Trace reset.')
         make_next_plot(plot_count)
 
     elif event.key == 'b': #go back to previous trace
+        # connect to redraw points
         if not plot_count <= 0:
             all_plots = all_plots[:-1, :]
             plot_count += -1
@@ -105,11 +122,14 @@ def button(event):
 
     elif event.key == 'x': #save all traces up until now. Must be done after 'n' to include current trace.
 
-        np.save(join(save_dir, 'trained.npy'), all_plots)
+        np.save(join(save_dir, 'labels.npy'), all_plots)
         np.save(join(save_dir, 'traces.npy'), traces[:plot_count, :])  
-        print('Saved {0} traces in {1}'.format(plot_count+1, save_dir))
+        print('Saved {0} size array in {1}'.format(all_plots.shape, save_dir))
 
-    elif event.key == 'n': #save current trace and move to the next one
+    elif (event.key == 'n') or (event.key == 'enter'): #save current trace and move to the next one
+        # add support for different label adjuster function
+        # add check for odd number of 3s???? - or maybe just more generic constraints
+
         latest_plot = label_adjuster(latest_plot)
 
         if all_plots is None:
@@ -159,7 +179,7 @@ def button(event):
         pass
 
     elif event.key == 'c': #check current trace
-        print(latest_plot)
+        print(label_adjuster(latest_plot))
 
     else:
         print('No function for key {0}'.format(event.key))
@@ -169,12 +189,13 @@ def _parse_args():
     parser.add_argument('-t', '--traces', help='path to .npy file with raw traces')
     parser.add_argument('-o', '--output', help='output directory', default='.')
     parser.add_argument('-y', '--yaxis', help='bounds for y axis', default=[0, 4], nargs='*')
+    parser.add_argument('-n', '--nans', help='if true, interpolate nans in original array', action='store_true')
     return parser.parse_args()
 
 def _main():
     args = _parse_args()
 
-    start_gui(args.traces, args.output, args.yaxis)
+    start_gui(args.traces, args.output, args.yaxis, args.nans)
 
 if __name__ == '__main__':
     _main()

@@ -32,33 +32,36 @@ def label_adjuster_2d(labels):
 
     return lab_strat
 
-def label_adjuster_3classes(l):
-    # OLD
-    # Should not be used unless model structure requires it
+def label_adjuster(l):
     if not np.count_nonzero(l) == 0:
         ones = np.where(l==1)[0]
         twos = np.where(l==2)[0]
+        threes = np.where(l==3)[0]
 
         if len(ones) > len(twos):
-            l[ones[-1]+1:] = 2
-            l[ones[-1]] = 1
+            l[ones[-1]+1:] = 1
+            l[ones[-1]] = 0
             ones = ones[:-1]
         elif len(ones) < len(twos):
-            l[:twos[0]] = 2
-            l[twos[0]] = 1
+            l[:twos[0]] = 1
+            l[twos[0]] = 0
             twos = twos[1:]
 
         for o, t in zip(ones, twos):
             if o < t:
-                l[o+1:t] = 2
-                l[t] = 1
+                l[o+1:t] = 1
+                l[t] = 0
             elif t < o: # this should be case of end of peak at start of trace, start of peak at end of trace
-                l[:t] = 2
-                l[t] = 1
-                l[o+1:] = 2
+                l[:t] = 1
+                l[t] = 0
+                l[o+1:] = 1
+
+        for t in range(len(threes))[::2]:
+            l[threes[t]:threes[t+1] + 1] = 2
+
     return l
 
-def label_adjuster(l):
+def label_adjuster_2class(l):
     '''
     Fills in 1 for points that are in peaks and 0 everywhere else.
     There has to be a much, much neater way to do this, but I'm not sure how to deal with edge cases
