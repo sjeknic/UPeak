@@ -9,6 +9,7 @@ import numpy as np
 from utils.plotting import display_results, save_figures
 from _setting import NORM_FUNCS, NORM_OPTIONS, NORM_METHOD
 from _setting import PAD_MODE, PAD_CV
+from _setting import PRED_FNAME
 from utils.augmenter import _normalize
 from utils.utils import _parse_inputs
 
@@ -60,7 +61,7 @@ def _main():
     result = model.predict(traces)
     
     Path(args.output).mkdir(parents=False, exist_ok=True)
-    np.save(join(args.output, 'predictions.npy'), result)
+    np.save(join(args.output, '{0}.npy'.format(PRED_FNAME)), result)
 
     if args.save is not None:
         save_figures(plot_traces[:, :, 0], result, args.save)

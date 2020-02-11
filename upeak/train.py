@@ -17,8 +17,8 @@ from _setting import NORM_FUNCS, NORM_OPTIONS, NORM_METHOD
 
 def define_callbacks(output_path):
     csv_logger = callbacks.CSVLogger(join(output_path, 'training.log'))
-    earlystop = callbacks.EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
-    fpath = join(output_path, 'weights.{epoch:02d}-{val_loss:.2f}-{val_categorical_accuracy:.2f}.hdf5')
+    earlystop = callbacks.EarlyStopping(monitor='val_loss', patience=2, restore_best_weights=True)
+    fpath = join(output_path, 'weights_{epoch:02d}_{val_loss:.2f}_{val_categorical_accuracy:.2f}.hdf5')
     cp_cb = callbacks.ModelCheckpoint(filepath=fpath, monitor='loss', save_best_only=True)
     return [csv_logger, earlystop, cp_cb]
 

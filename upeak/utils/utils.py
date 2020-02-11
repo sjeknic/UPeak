@@ -1,6 +1,7 @@
 from os.path import join, isdir, isfile
 from pathlib import Path
 from glob import glob
+from _setting import WEIGHT_FNAME
 
 def save_model(model, path='./output'):
     Path(path).mkdir(parents=False, exist_ok=True)
@@ -9,7 +10,7 @@ def save_model(model, path='./output'):
     with open(join(path, 'model_structure.json'), 'w') as json_file:
         json_file.write(model_json)
 
-    model.save_weights(join(path, 'model_weights.h5'))
+    model.save_weights(join(path, '{0}.h5'.format(WEIGHT_FNAME)))
     model.save(join(path, 'complete_model.hd5'))
 
 def _parse_inputs(inputs):
