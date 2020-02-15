@@ -14,6 +14,7 @@ from pathlib import Path
 from _setting import FRAC_TEST, VAL_STEPS
 from _setting import AUG_FUNCS, AUG_OPTIONS, AUG_METHOD
 from _setting import NORM_FUNCS, NORM_OPTIONS, NORM_METHOD
+import utils.metrics
 
 def define_callbacks(output_path):
     csv_logger = callbacks.CSVLogger(join(output_path, 'training.log'))
@@ -32,7 +33,7 @@ def _parse_args():
     parser.add_argument('-e', '--epochs', default=10, type=int)
     parser.add_argument('-b', '--batch', default=32, type=int)
     parser.add_argument('-s', '--steps', default=1000, type=int)
-    parser.add_argument('-w', '--weights', help='weights for loss function', default=None, nargs='*', type=float) 
+    parser.add_argument('-w', '--weights', help='weights for each class in loss function', default=None, nargs='*', type=float) 
     parser.add_argument('-p', '--optimizer', help='optimizer for model compilation', default='rmsprop')
     parser.add_argument('-a', '--augment', help='add this to include augmented data too. Set options in _setting.py', action='store_true')
     parser.add_argument('-n', '--normalize', help='add this to include normalization of data. Set options in _setting.py', action='store_true')
@@ -71,7 +72,7 @@ def _main():
             activation=od['activation'], padding=od['padding'])
     else:
         # generate default model structure
-        input_dims = (128, 1, classes) #default is len 64, dim 1, classes 3
+        input_dims = (64, input_features, output_classes) #default is len 64, dim 1, classes 3
         model = model_generator(input_dims=input_dims)
 
     # Make data generators
@@ -85,7 +86,15 @@ def _main():
 
     # Compile
     # Currently only one loss function is possible
-    model.compile(optimizer=args.optimizer, metrics=[keras.metrics.categorical_accuracy], loss=weighted_categorical_crossentropy(args.weights))
+    metrics = [keras.metrics.categorical_accuracy,
+               utils.metrics.channel_recall(channel=0, name="background_recall"),
+               utils.metrics.channel_precision(channel=0, name="background_precision"),
+               utils.metrics.channel_recall(channel=1, name="slope_recall"),
+               utils.metrics.channel_precision(channel=1, name="slope_precision"),
+               utils.metrics.channel_recall(channel=2, name="plateau_recall"),
+               utils.metrics.channel_precision(channel=2, name="plateau_precision"),
+               ]
+    model.compile(optimizer=args.optimizer, metrics=metrics, loss=weighted_categorical_crossentropy(args.weights))
 
     # Define callbacks
     Path(args.output).mkdir(parents=False, exist_ok=True)
