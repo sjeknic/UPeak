@@ -96,6 +96,14 @@ class Peaks(OrderedDict):
             self[key]._get_prominence(adjust_tracts=adjust_tracts, bi_directional=bi_directional, max_gap=max_gap)
         return [self[key].prominence for key in self.keys()]
 
+    def peak_area_under_curve(self):
+        for key in self.keys():
+            self[key]._get_auc(area='peak')
+        return [self[key].peak_auc for key in self.keys()]
+
+    def total_area_under_curve(self):
+        pass
+
     def width(self, rel_height=0.5, abs_height=None, estimate='linear', return_widest=True):
         '''
         rel_height is the height relative to the PROMINENCE of the peak at which to measure width
@@ -202,7 +210,7 @@ class peak_site():
     
         if not hasattr(self, 'asymmetry'):
             if (not hasattr(self, 'amplitude')) and (method == 'amplitude'):
-                self.amplitude = self._get_amplitude()
+                self._get_amplitude()
             
             self.asymmetry = []
             for n in range(0, self.traces.shape[0]):
@@ -212,6 +220,24 @@ class peak_site():
                     self.asymmetry.append([du._peak_asymmetry_by_plateau(self.traces[n], p, pl) for (p, pl) in zip(self._peak_idxs[n], self._plateau_idxs)])
             
         return self.asymmetry
+
+    def _get_auc(self, area='total'):
+
+        if area == 'peak':
+            if not hasattr(self, 'peak_auc'):
+                self.peak_auc = []
+                for n in range(0, self.traces.shape[0]):
+                    self.peak_auc.append([du._area_under_curve(self.traces[n], pi) for pi in self._peak_idxs[n]])
+
+            return self.peak_auc
+
+        elif area == 'total':
+            if not hasattr(self, 'total_auc'):
+                self.total_auc = []
+                for n in range(0, self.traces.shape[0]):
+                    self.total_auc.append(du._area_under_curve(self.traces[n], range(0, self.traces.shape[1])))
+
+            return self.total_auc
     
     def _get_peak_base_pts(self, adjust_edge=True, dist=4):
         
@@ -253,9 +279,9 @@ class peak_site():
 
             # will be used to calculate prominence below
             if not hasattr(self, 'amplitude'):
-                self.amplitude = self._get_amplitude()
+                self._get_amplitude()
             if not hasattr(self, 'base'):
-                self.base = self._get_base()
+                self._get_base()
 
             if adjust_tracts:
                 if not hasattr(self, 'tracts'):

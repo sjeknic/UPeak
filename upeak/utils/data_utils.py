@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from peakutils import baseline
-import matplotlib.pyplot as plt
+from scipy.integrate import simps
 
 def normalize_by_baseline(trace, deg=1):
     '''
@@ -162,6 +162,12 @@ def _peak_amplitude(trace, peak_idx):
     pv = np.where(mask==True, trace, 0)
  
     return np.nanargmax(pv), pv[np.nanargmax(pv)]
+
+def _area_under_curve(trace, idx):
+    '''
+    returns area under curve for the indices provided
+    '''
+    return simps(trace[idx])
 
 def _peak_prominence(trace, peak_idx, peak_base=None, peak_amp=None):
     '''
