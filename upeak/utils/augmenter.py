@@ -1,6 +1,5 @@
 import numpy as np
 import scipy.stats as stats
-import matplotlib.pyplot as plt
 from sklearn.preprocessing import normalize, maxabs_scale, minmax_scale
 
 def augment_decorator(func):
@@ -153,47 +152,3 @@ def filter_nonresponders(traces, labels, frac=0.5, thres=0.05, filt=1):
     mask_resp[resp_idx] = True
 
     return np.vstack([traces[mask_non_resp], traces[mask_resp]]), np.vstack([labels[mask_non_resp], labels[mask_resp]])
-
-def filter_nonresponders_old(traces, labels, frac=0.5, thres=0.02, filter=2):
-    '''
-    NO LONGER USED
-    frac is fraction of traces with no peaks to remove.
-    thres is percent of points that have to be positive in order to be considered a responding trace
-    filter is the classification used for filtering
-    labels should be size of (traces, traces, filter)
-    '''
-    thres *= traces.shape[1]
-    positive_points = np.array([labels[n, :, filter].sum() for n in range(0, labels.shape[0])])
-    non_responders = positive_points <= thres
-
-    traces_responders = traces[~non_responders, :, :].copy()
-    labels_responders = labels[~non_responders, :, :].copy()
-
-    traces_nonresponders = traces[non_responders, :, :].copy()
-    labels_nonresponders = labels[non_responders, :, :].copy()
-
-    traces_nonresponders = traces_nonresponders[::int(1/frac)]
-    labels_nonresponders = labels_nonresponders[::int(1/frac)]
-
-    return np.vstack([traces_responders, traces_nonresponders]), np.vstack([labels_responders, labels_nonresponders])
-
-def gen_augment_arr(dims, frac=0.5):
-    '''
-    NO LONGER USED
-    Returns arr of size dims, with frac rows containing augmented data
-    Should include option in the future to select augmenting fucntions and parameters
-    '''
-    arr = np.ones(dims)
-    #narr = amplitude(noise(arr))
-    narr = noise(arr)
-    narr[::int(1/frac)] = 1
-    return narr
-
-def augment_data(arr):
-    '''
-    NO LONGER USED
-    Should return original array stacked on an array that has noise added and amplitude adjusted.
-    '''
-    narr = noise(arr)
-    narr = amplitude(narr)
-    return np.vstack([arr, narr])
