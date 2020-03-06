@@ -74,7 +74,6 @@ def _filter_peaks_by_assymmetry(trace, labels, seeds, thres=0.1):
             peak_idx = np.where(labels==p)[0]
             plateau_idx = np.where(seeds==p)[0]
 
-            #assym = _peak_asymmetry(trace, peak_idx)
             assym = _peak_asymmetry_by_plateau(trace, peak_idx, plateau_idx)
 
             if abs(1-assym) <= thres:

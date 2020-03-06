@@ -18,20 +18,6 @@ def nan_helper_2d(arr):
         temp[n, :] = y 
     return temp
 
-def label_adjuster_2d(labels):
-    # No longer being used
-
-    lab_strat = None
-    for l in labels:
-        l = label_adjuster(l)
-
-        if lab_strat is None:
-            lab_strat = l
-        else:
-            lab_strat = np.vstack([lab_strat, l])
-
-    return lab_strat
-
 def label_adjuster(l):
     if not np.count_nonzero(l) == 0:
         ones = np.where(l==1)[0]
@@ -59,34 +45,6 @@ def label_adjuster(l):
         for t in range(len(threes))[::2]:
             l[threes[t]:threes[t+1] + 1] = 2
 
-    return l
-
-def label_adjuster_2class(l):
-    '''
-    Fills in 1 for points that are in peaks and 0 everywhere else.
-    There has to be a much, much neater way to do this, but I'm not sure how to deal with edge cases
-    '''
-    if not np.count_nonzero(l) == 0:
-        ones = np.where(l==1)[0]
-        twos = np.where(l==2)[0]
-
-        if len(ones) > len(twos):
-            l[ones[-1]+1:] = 1
-            l[ones[-1]] = 0
-            ones = ones[:-1]
-        elif len(ones) < len(twos):
-            l[:twos[0]] = 1
-            l[twos[0]] = 0
-            twos = twos[1:]
-
-        for o, t in zip(ones, twos):
-            if o < t:
-                l[o+1:t] = 1
-                l[t] = 0
-            elif t < o: # this should be case of end of peak at start of trace, start of peak at end of trace
-                l[:t] = 1
-                l[t] = 0
-                l[o+1:] = 1
     return l
 
 def pad_traces(traces, model_size, pad_mode='edge', cv=0):
@@ -220,47 +178,3 @@ class DataGenerator(Sequence):
         l_patch = np.array([self.labels[r, c:c+self.length, :] for (r, c) in data_idxs])
         
         return t_patch, l_patch
-
-def _parse_args():
-
-    parser = argparse.ArgumentParser(description='data processor')
-    parser.add_argument('-n', '--nans', help='add if nans need to be removed', action='store_true')
-    parser.add_argument('-l', '--labels', help='add if label categories need to be set', action='store_true')
-    parser.add_argument('-s', '--stack', help='stack input traces. 0=pad with 0, 1= pad with nan', default=None, type=int)
-    parser.add_argument('-z', '--zscore', help='generate z-score normalized traces', action='store_true')
-    parser.add_argument('-o', '--output', help='where to save the output array', default='.')
-    parser.add_argument('-i', '--input', help='path to input array', nargs='*')
-    return parser.parse_args()
-
-def _main():
-
-    args = _parse_args()
-    arr_stack = [np.load(a) for a in args.input]
-
-    Path(args.output).mkdir(parents=False, exist_ok=True)
-
-    if args.nans:
-        for n, arr in enumerate(arr_stack): 
-            arr = nan_helper_2d(arr)
-            arr_stack[n] = arr
-        out_arr = stack_sequences(arr_stack, cv=np.nan)
-        np.save(join(args.output, 'output_array.npy'), out_arr)
-    elif args.labels: 
-        for n, arr in enumerate(arr_stack):
-            arr = label_adjuster_2d(arr)
-            arr_stack[n] = arr
-        out_arr = stack_sequences(arr_stack, cv=0)
-        np.save(join(args.output, 'output_array.npy'), out_arr)
-    elif args.zscore:
-        for n, arr in enumerate(arr_stack):
-            arr = normalize_zscore(arr, by_row=True)
-            arr_stack[n] = arr
-        out_arr = stack_sequences(arr_stack, cv=np.nan)
-        np.save(join(args.output, 'output_array.npy'), out_arr)
-    elif args.stack is not None:
-        cv = [0, np.nan][args.stack]
-        out_arr = stack_sequences(arr_stack, cv=cv)
-        np.save(join(args.output, 'output_array.npy'), out_arr)
-
-if __name__ == '__main__':
-    _main()
