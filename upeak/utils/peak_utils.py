@@ -102,7 +102,9 @@ class Peaks(OrderedDict):
         return [self[key].peak_auc for key in self.keys()]
 
     def total_area_under_curve(self):
-        pass
+        for key in self.keys():
+            self[key]._get_auc(area='total')
+        return [self[key].total_auc for key in self.keys()]
 
     def width(self, rel_height=0.5, abs_height=None, estimate='linear', return_widest=True):
         '''
