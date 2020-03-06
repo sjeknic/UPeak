@@ -9,7 +9,7 @@ def _parse_args():
     parser = argparse.ArgumentParser(description='custom model structure')
     parser.add_argument('-d', '--dims', help='input dimensions to model, tuple. Must be 2D currently', nargs=2, type=int)
     parser.add_argument('-o', '--output', help='path to save model', default='.')
-    parser.add_argument('-c', '--classes', help='number of classes the model will learn. Must match input/output shape.', default=2, type=int)
+    parser.add_argument('-c', '--classes', help='number of classes the model will learn. Must match input/output shape.', default=3, type=int)
     parser.add_argument('-s', '--steps', help='number of pooling and upsampling steps.', default=3, type=int)
     parser.add_argument('-l', '--layers', help='number of convolutional layers per step', default=2, type=int)
     parser.add_argument('-k', '--kernel', help='kernel size. can be list of length steps.', default=8, nargs='*', type=int)

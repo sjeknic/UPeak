@@ -37,7 +37,6 @@ def _main():
 
     if args.model is not None:
         # recreate model that was used during training with new input layer
-        # note that some dimension agreement is probably necessary
 
         with open(args.model, 'r') as json_file:
             od = json.load(json_file)
@@ -57,8 +56,9 @@ def _main():
     #load weights
     model.load_weights(args.weights)
     
-    #apply predictions
+    #apply predictions and trim to size
     result = model.predict(traces)
+    result = result[:, :plot_traces.shape[1], :]
     
     Path(args.output).mkdir(parents=False, exist_ok=True)
     np.save(join(args.output, '{0}.npy'.format(PRED_FNAME)), result)
