@@ -2,6 +2,7 @@ import numpy as np
 import math
 from peakutils import baseline
 from scipy.integrate import simps
+from data_processing import nan_helper
 
 def normalize_by_baseline(trace, deg=1):
     '''
@@ -125,7 +126,8 @@ def _tract_adjusted_peak_prominence(trace, labels, tracts, peak_bases=None, peak
                 prominences.append(_peak_prominence(trace, peak_idx, peak_base=base, peak_amp=peak_amp))
         else:
             peak_idx = np.where(labels==t[0])[0]
-            prominences.append(_peak_prominence(trace, peak_idx, peak_base=peak_bases[n], peak_amp=peak_amplitudes[n]))
+            i = flat_tracts.index(t[0])
+            prominences.append(_peak_prominence(trace, peak_idx, peak_base=peak_bases[i], peak_amp=peak_amplitudes[i]))
     
     return prominences
 
@@ -212,6 +214,13 @@ def _get_crosses_at_height(trace, peak_idx, rel_height=0.5, abs_height=None,
         tracts=None, estimate='linear', return_widest=True, amplitude=None, prominence=None, slope_pts=None):
     '''
     '''
+    assert rel_height < 1, "cannot find width at height greater than peak max"
+    assert (abs_height == None) or (abs_height < np.max(trace[peak_idx])), "cannot find width at height greater than peak max"
+
+    if np.isnan(trace).any():
+        nans, z = nan_helper(trace)
+        trace[nans] = np.interp(z(nans), z(~nans), trace[~nans])
+
     if (estimate == 'linear') and (slope_pts is None):
         raise ValueError('Slope pts must be provided if using linear estimation of peak width')
     elif (estimate == 'gauss') and (tracts is None):
@@ -232,6 +241,12 @@ def _get_crosses_at_height(trace, peak_idx, rel_height=0.5, abs_height=None,
         target_height = (prominence * rel_height) + base
     else:
         target_height = abs_height
+
+    if target_height > np.max(trace[peak_idx]):
+        # TODO: returning an empty list will likely cause errors later.
+        # I think this is preferable to returning nans, as that might hide errors
+        # this code should NEVER run if this function is working correctly
+        return [] 
     
     all_cross_pts = np.where(np.diff(np.sign(trace - target_height)))[0]
     peak_cross_pts = np.array([a for a in all_cross_pts if a in peak_idx])
