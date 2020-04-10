@@ -49,7 +49,7 @@ def _main():
             activation=od['activation'], padding=od['padding'])
     else:
         # generate default model structure
-        traces = pad_traces(traces, 3, pad_mode=PAD_MODE, cv=PAD_CV)
+        traces = pad_traces(traces, 2, pad_mode=PAD_MODE, cv=PAD_CV)
         input_dims = (traces.shape[1], traces.shape[2], args.classes)
         model = model_generator(input_dims=input_dims)
 
