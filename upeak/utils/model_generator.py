@@ -1,7 +1,7 @@
-import keras
-from keras.layers import Conv1D, MaxPooling1D, UpSampling1D, BatchNormalization, Input, Activation
-from keras.layers.advanced_activations import LeakyReLU
-from keras import backend as K
+import tensorflow.keras
+from tensorflow.keras.layers import Conv1D, MaxPooling1D, UpSampling1D, BatchNormalization, Input, Activation
+from tensorflow.keras.layers import LeakyReLU
+from tensorflow.keras import backend as K
 from _setting import ALPHA
 
 def model_generator(input_dims=(64, 1, 3), steps=2, conv_layers=2, transfer=False, filters=64, kernel_size=4, strides=1, activation='LeakyReLU', padding='same'):
@@ -39,7 +39,7 @@ def model_generator(input_dims=(64, 1, 3), steps=2, conv_layers=2, transfer=Fals
     output = Conv1D(input_dims[2], 1)(z[-1]) #Conv1D(input_dims[2], input_dims[1])(z[-1])
     output = Activation('softmax')(output)
 
-    return keras.models.Model(x, output)
+    return tensorflow.keras.models.Model(x, output)
     
 def conv_layer_module(layer, steps, filters=8, kernel_size=8, strides=1, activation='relu', padding='same'):
     '''
@@ -100,7 +100,7 @@ def upsampling_module(layer, steps, transfer_layers=None, filters=8, kernel_size
         layer = UpSampling1D()(layer)
    
         if transfer_layers is not None:
-            layer = keras.layers.merge.concatenate([layer, transfer_layers[s]])
+            layer = tensorflow.keras.layers.merge.concatenate([layer, transfer_layers[s]])
 
         layer = conv_layer_module(layer, steps=steps[1], filters=int(filters), kernel_size=kk, strides=strides, activation=activation, padding=padding)
         stack.append(layer)

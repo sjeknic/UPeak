@@ -1,6 +1,6 @@
 import argparse
 from utils.data_processing import load_data, pad_traces
-from keras.layers import Input
+from tensorflow.keras.layers import Input
 from pathlib import Path
 from os.path import join
 import json

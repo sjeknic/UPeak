@@ -10,7 +10,8 @@ def save_model(model, path='./output'):
     with open(join(path, 'model_structure.json'), 'w') as json_file:
         json_file.write(model_json)
 
-    model.save_weights(join(path, '{0}.h5'.format(WEIGHT_FNAME)))
+    model.save_weights(join(path, '{0}.h5'.format(WEIGHT_FNAME)), save_format='h5')
+    model.save_weights(join(path, '{0}.tf'.format(WEIGHT_FNAME)), save_format='tf')
     model.save(join(path, 'complete_model.hd5'))
 
 def _parse_inputs(inputs):
