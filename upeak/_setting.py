@@ -36,6 +36,6 @@ DISP_SIZE = (11.69, 8.27) #inches
 DISP_YLIM = [0, 6]
 DISP_LW = 2
 DISP_NUMFIGS = 20
-DISP_CLASS = -1 
+DISP_CLASS = 1 
 DISP_CMAP = 'plasma'
 DISP_FORMAT = 'png'

@@ -52,15 +52,18 @@ def normalize_zscore(traces, by_row=True, offset=0, normalize=False):
     return arr
 
 @augment_decorator
-def normalize_amplitude(traces, by_row=True):
+def normalize_amplitude(traces, feat=0):
     '''
     by_row, if true will normalize each trace individually. False will normalize the whole stack together
     '''
-    if by_row:
-        row_maxs = np.nanmax(traces, axis=1)
-        return traces / row_maxs[:, np.newaxis]
-    else:
-        return traces / np.nanmax(traces)
+
+    if len(traces.shape) == 3:
+        traces = traces[:, :, feat]
+
+    traces = maxabs_scale(traces, axis=1)
+    traces = np.expand_dims(traces, axis=-1)
+
+    return traces
 
 @augment_decorator
 def normalize_maxabs(traces, feat=1):
