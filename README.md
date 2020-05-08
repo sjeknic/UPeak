@@ -7,7 +7,7 @@ The CNN is currently set up to recognize three output features in-place: backgro
 
 ## Training
 
-Training is done by calling the train function with the raw traces and the generated training labels (see training data below). In the output directory, weights files will be saved at the end of each epoch as well as at the end of training. Additionally, files defining the model structure will also be saved in that directory.
+Training is done by calling the train function with the raw traces and the generated training labels (see training data below). The path can be to a directory containing the trace and label files, and it is assumed that the traces and labels are in the same order. In the output directory, weights files will be saved at the end of each epoch as well as at the end of training. Additionally, files defining the model structure will also be saved in that directory.
 
 ```
 python upeak/train.py -t /path/to/traces -l /path/to/labels -o /path/to/output_directory
@@ -33,7 +33,7 @@ python upeak/train.py -t /path/to/traces -l /path/to/labels -o /path/to/output_d
 
 ## Predictions
 
-Predicting traces can be done just by giving the weights file (.hdf5, .h5) and traces (numpy array) to the predict function. The output will be a single numpy array file that is *n x m x c*, where *n* is the number of traces, *m* is the length of each trace, and *c* is the number of output features (default is 3). 
+Predicting traces can be done just by giving the weights file (.tf, .hdf5, .h5) and traces (numpy array) to the predict function. The output will be a single numpy array file that is *n x m x c*, where *n* is the number of traces, *m* is the length of each trace, and *c* is the number of output features (default is 3). 
 
 ```
 python upeak/predict.py -t /path/to/traces -w /path/to/weights -o /path/to/output_directory
@@ -82,4 +82,8 @@ The peak trainer is automatically set up to use the current labeling scheme (0 -
 
 ## Custom model structures
 
+The *train.py* and *predict.py* functions have a default model structure, but can be used with a variety of different model structures. These can be made using the *build_model.py* function. To get a better understanding of what the options are, you should read the U-Net paper, as the model structures that can be built with this function are all based on that base structure.
+
 ## Options in _setting.py
+
+in progress

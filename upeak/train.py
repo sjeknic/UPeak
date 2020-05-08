@@ -4,9 +4,10 @@ import numpy as np
 from utils.data_processing import load_data, DataGenerator, gen_train_test
 from utils.augmenter import _augment, _normalize
 from utils.utils import save_model, _parse_inputs
-import keras
-from keras.models import model_from_json
-from keras import callbacks
+from tensorflow import keras
+from tensorflow.keras.models import model_from_json
+from tensorflow.keras import callbacks
+from tensorflow.keras.metrics import categorical_accuracy
 from utils.model_generator import model_generator
 from utils.loss import weighted_categorical_crossentropy
 from os.path import join
@@ -32,7 +33,7 @@ def _parse_args():
     parser.add_argument('-m', '--model', help='path to custom model structure. otherwise default.')
     parser.add_argument('-e', '--epochs', default=10, type=int)
     parser.add_argument('-b', '--batch', default=32, type=int)
-    parser.add_argument('-s', '--steps', default=1000, type=int)
+    parser.add_argument('-s', '--steps', default=10000, type=int)
     parser.add_argument('-w', '--weights', help='weights for each class in loss function', default=None, nargs='*', type=float) 
     parser.add_argument('-p', '--optimizer', help='optimizer for model compilation', default='rmsprop')
     parser.add_argument('-a', '--augment', help='add this to include augmented data too. Set options in _setting.py', action='store_true')
@@ -86,7 +87,7 @@ def _main():
 
     # Compile
     # Currently only one loss function is possible
-    metrics = [keras.metrics.categorical_accuracy,
+    metrics = [categorical_accuracy,
                utils.metrics.channel_recall(channel=0, name="background_recall"),
                utils.metrics.channel_precision(channel=0, name="background_precision"),
                utils.metrics.channel_recall(channel=1, name="slope_recall"),

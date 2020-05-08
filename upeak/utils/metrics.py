@@ -1,5 +1,5 @@
-import keras.backend as K
 import tensorflow as tf
+import tensorflow.keras.backend as K
 
 def channel_precision(channel, name):
     def precision_func(y_true, y_pred):
