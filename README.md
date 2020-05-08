@@ -7,7 +7,7 @@ The CNN is currently set up to recognize three output features in-place: backgro
 
 ## Training
 
-Training is done by calling the train function with the raw traces and the generated training labels (see training data below). The path can be to a directory containing the trace and label files, and it is assumed that the traces and labels are in the same order. In the output directory, weights files will be saved at the end of each epoch as well as at the end of training. Additionally, files defining the model structure will also be saved in that directory.
+Training is done by calling the train function with the raw traces and the generated training labels (see training data below). The path should be to a directory containing the trace and label files, and it is assumed that the traces and labels are numpy array files and in the same order. In the output directory, weights files will be saved at the end of each epoch as well as at the end of training. Additionally, files defining the model structure will also be saved in that directory.
 
 ```
 python upeak/train.py -t /path/to/traces -l /path/to/labels -o /path/to/output_directory
